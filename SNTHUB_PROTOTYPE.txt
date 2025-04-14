@@ -78,11 +78,11 @@ local Window = WindUI:CreateWindow({
 })
 
 local Tabs = {
-    Character = Window:Tab({Title = "Character", Icon = "user"}),
-    EspT = Window:Tab({Title = "Персонаж", Icon = "user"}),
-    EspS = Window:Tab({Title = "ESP", Icon = "eye"}),
-    Aimbot = Window:Tab({Title = "Аимбот", Icon = "crosshair"}),
-    Settings = Window:Tab({Title = "Настройки", Icon = "settings"})
+    CharacterTab = Window:Tab({Title = "Character", Icon = "user"}),
+    EspTab = Window:Tab({Title = "Персонаж", Icon = "user"}),
+    EspSettingsTab = Window:Tab({Title = "ESP", Icon = "eye"}),
+    AimbotTab = Window:Tab({Title = "Аимбот", Icon = "crosshair"}),
+    SettingsTab = Window:Tab({Title = "Настройки", Icon = "settings"})
 }
 
 -- Общие функции
@@ -186,7 +186,7 @@ local function ToggleAntiAFK(state)
 end
 
 -- Интерфейс персонажа
-Tabs.Character:Slider({
+Tabs.CharacterTab:Slider({
     Title = "Скорость передвижения",
     Value = {Min = 0, Max = 200, Default = 16},
     Callback = function(value)
@@ -195,7 +195,7 @@ Tabs.Character:Slider({
     end
 })
 
-Tabs.Character:Toggle({
+Tabs.CharacterTab:Toggle({
     Title = "Фиксировать скорость",
     Default = false,
     Callback = function(state)
@@ -204,7 +204,7 @@ Tabs.Character:Toggle({
     end
 })
 
-Tabs.Character:Slider({
+Tabs.CharacterTab:Slider({
     Title = "Сила прыжка",
     Value = {Min = 0, Max = 200, Default = 50},
     Callback = function(value)
@@ -213,7 +213,7 @@ Tabs.Character:Slider({
     end
 })
 
-Tabs.Character:Toggle({
+Tabs.CharacterTab:Toggle({
     Title = "Фиксировать прыжок",
     Default = false,
     Callback = function(state)
@@ -364,7 +364,7 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
-Tabs.EspT:Toggle({
+Tabs.EspTab:Toggle({
     Title = "Highlight ESP",
     Default = false,
     Callback = function(tog)
@@ -373,7 +373,7 @@ Tabs.EspT:Toggle({
     end
 })
 
-Tabs.EspT:Toggle({
+Tabs.EspTab:Toggle({
     Title = "Включить Names ESP",
     Default = false,
     Callback = function(enabled)
@@ -381,7 +381,7 @@ Tabs.EspT:Toggle({
     end
 })
 
-Tabs.EspT:Toggle({
+Tabs.EspTab:Toggle({
     Title = "Включить Distance ESP",
     Default = false,
     Callback = function(enabled)
@@ -391,7 +391,7 @@ Tabs.EspT:Toggle({
 
 
 
-Tabs.EspS:Dropdown({
+Tabs.EspSettingsTab:Dropdown({
     Title = "Цвет Highlight ESP",
     Values = { "Green", "Red", "Blue", "Yellow", "Pink", "Purple" },
     Value = "Red",
@@ -411,7 +411,7 @@ Tabs.EspS:Dropdown({
     end,
 })
 
-Tabs.EspS:Input({
+Tabs.EspSettingsTab:Input({
     Title = "Прозрачность Highlight ESP",
     Default = 0.5,
     Placeholder = "Введите прозрачность",
@@ -426,7 +426,7 @@ Tabs.EspS:Input({
     end,
 })
 
-Tabs.EspS:Dropdown({
+Tabs.EspSettingsTab:Dropdown({
     Title = "Цвет Names ESP",
     Values = colorOptions,
     Value = "White",
@@ -434,8 +434,7 @@ Tabs.EspS:Dropdown({
         espSettings.namesColor = colorValues[option]
     end,
 })
-
-Tabs.EspS:Dropdown({
+Tabs.EspSettingsTab:Dropdown({
     Title = "Цвет Distance ESP",
     Values = colorOptions,
     Value = "White",
@@ -563,11 +562,7 @@ local function getUpdatedPlayerList()
     return dropdownValues
 end
 
-local dropdownElement
-
-local AimbotTab
-
-Tabs.Aimbot:Toggle({
+Tabs.AimbotTab:Toggle({
     Title = "Сфокусировать камеру на игрока",
     Default = false,
     Callback = function(Value)
@@ -598,21 +593,21 @@ Tabs.Aimbot:Toggle({
     end
 })
 
-dropdownElement = Tabs.Aimbot:Dropdown({
+Tabs.AimbotTab:Dropdown({
     Title = "Сменить фокус на другого игрока",
     Values = getUpdatedPlayerList(),
     Value = "None",
     Callback = function(selectedPlayerName)
         lockedPlayer = getPlayerByName(selectedPlayerName)
         if lockedPlayer and isCameraLocked then
-            print("Camera locked to:", selectedPlayerName)
+   print("Camera locked to:", selectedPlayerName)
         elseif isCameraLocked then
             print("Camera lock disabled.")
         end
     end
 })
 
-Tabs.Aimbot:Slider({
+Tabs.AimbotTab:Slider({
     Title = "Радиус фокуса",
     Value = {min = 10, max = 200, Default = 100},
     Callback = function(Value)
@@ -624,7 +619,7 @@ Tabs.Aimbot:Slider({
     end
 })
 
-Tabs.Aimbot:Button({
+Tabs.AimbotTab:Button({
     Title = "Обновить список игроков",
     Callback = function()
         if dropdownElement then
@@ -653,7 +648,7 @@ end)
 
 -- Настройки
 
-Tabs.Settings:Toggle({
+Tabs.SettingsTab:Toggle({
     Title = "Хитбоксы",
     Callback = function(state)
         Settings.Hitbox.Enabled = state
@@ -668,7 +663,7 @@ Tabs.Settings:Toggle({
     end
 })
 
-Tabs.Settings:Slider({
+Tabs.SettingsTab:Slider({
     Title = "Размер хитбокса",
     Value = {Min=1, Max=10, Default=5},
     Callback = function(val)
@@ -677,7 +672,7 @@ Tabs.Settings:Slider({
     end
 })
 
-Tabs.Settings:Colorpicker({
+Tabs.SettingsTab:Colorpicker({
     Title = "Цвет хитбокса",
     Default = Color3.new(1,0,0),
     Callback = function(col)
@@ -686,7 +681,7 @@ Tabs.Settings:Colorpicker({
     end
 })
 
-Tabs.Settings:Toggle({
+Tabs.SettingsTab:Toggle({
     Title = "Анти-AFK",
     Callback = function(state)
         Settings.AntiAFK.Enabled = state
@@ -694,13 +689,13 @@ Tabs.Settings:Toggle({
     end
 })
 
-Tabs.Settings:Toggle({
+Tabs.SettingsTab:Toggle({
     Title = "Ноклип",
     Default = false,
     Callback = ToggleNoclip
 })
 
-Tabs.Settings:Toggle({
+Tabs.SettingsTab:Toggle({
     Title = "Анти-AFK",
     Default = false,
     Callback = ToggleAntiAFK
