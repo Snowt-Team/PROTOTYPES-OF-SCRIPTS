@@ -79,8 +79,8 @@ local Window = WindUI:CreateWindow({
 
 local Tabs = {
     CharacterTab = Window:Tab({Title = "Character", Icon = "user"}),
-    EspTab = Window:Tab({Title = "Персонаж", Icon = "user"}),
-    EspSettingsTab = Window:Tab({Title = "ESP", Icon = "eye"}),
+    EspTab = Window:Tab({Title = "ESP", Icon = "eye"}),
+    EspSettingsTab = Window:Tab({Title = "ESP настройки", Icon = "file-cog"}),
     AimbotTab = Window:Tab({Title = "Аимбот", Icon = "crosshair"}),
     SettingsTab = Window:Tab({Title = "Настройки", Icon = "settings"})
 }
@@ -600,7 +600,7 @@ Tabs.AimbotTab:Dropdown({
     Callback = function(selectedPlayerName)
         lockedPlayer = getPlayerByName(selectedPlayerName)
         if lockedPlayer and isCameraLocked then
-   print("Camera locked to:", selectedPlayerName)
+print("Camera locked to:", selectedPlayerName)
         elseif isCameraLocked then
             print("Camera lock disabled.")
         end
@@ -692,13 +692,15 @@ Tabs.SettingsTab:Toggle({
 Tabs.SettingsTab:Toggle({
     Title = "Ноклип",
     Default = false,
-    Callback = ToggleNoclip
+    Callback = function(state) ToggleNoclip(state)
+end
 })
 
 Tabs.SettingsTab:Toggle({
     Title = "Анти-AFK",
     Default = false,
-    Callback = ToggleAntiAFK
+    Callback = function(state) ToggleAntiAFK(state)
+end
 })
 
 -- Очистка
