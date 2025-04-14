@@ -35,7 +35,7 @@ local Settings = {
         Enabled = false,
         Connection = nil
     },
-    Character = { -- Исправлено: CharacterSettings -> Character
+    Character = {
         WalkSpeed = 16,
         DefaultWalkSpeed = 16,
         LockWalk = false,
@@ -73,13 +73,12 @@ local Window = WindUI:CreateWindow({
     HasOutline = true
 })
 
-local Tabs = {
-    CharacterTab = Window:Tab({Title = "Character", Icon = "user"}),
-    EspTab = Window:Tab({Title = "ESP", Icon = "eye"}),
-    EspSettingsTab = Window:Tab({Title = "ESP настройки", Icon = "file-cog"}),
-    AimbotTab = Window:Tab({Title = "Аимбот", Icon = "crosshair"}),
-    SettingsTab = Window:Tab({Title = "Настройки", Icon = "settings"})
-}
+local Tabs = {}
+Tabs.CharacterTab = Window:Tab({Title = "Character", Icon = "user"})
+Tabs.EspTab = Window:Tab({Title = "ESP", Icon = "eye"})
+Tabs.EspSettingsTab = Window:Tab({Title = "ESP настройки", Icon = "file-cog"})
+Tabs.AimbotTab = Window:Tab({Title = "Аимбот", Icon = "crosshair"})
+Tabs.SettingsTab = Window:Tab({Title = "Настройки", Icon = "settings"})
 
 -- Общие функции
 local function SafeCall(fn)
@@ -109,34 +108,32 @@ end
 
 -- Ноклип
 local function ToggleNoclip(state)
-    SafeCall(function()
-        Settings.Noclip.Enabled = state -- Обновляем состояние
-        if state then
-            Settings.Noclip.Connection = RunService.Stepped:Connect(function()
-                local character = localPlayer.Character
-                if character then
-                    for _, part in pairs(character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = false
-                        end
+    Settings.Noclip.Enabled = state
+    if state then
+        Settings.Noclip.Connection = RunService.Stepped:Connect(function()
+            local character = localPlayer.Character
+            if character then
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
                     end
                 end
-            end)
-        else
-            if Settings.Noclip.Connection then
-                Settings.Noclip.Connection:Disconnect()
-                Settings.Noclip.Connection = nil
-                local character = localPlayer.Character
-                if character then
-                    for _, part in pairs(character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = true
-                        end
+            end
+        end)
+    else
+        if Settings.Noclip.Connection then
+            Settings.Noclip.Connection:Disconnect()
+            Settings.Noclip.Connection = nil
+            local character = localPlayer.Character
+            if character then
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
                     end
                 end
             end
         end
-    end)
+    end
 end
 
 -- Хитбоксы
@@ -174,61 +171,61 @@ end
 
 -- Анти-AFK
 local function ToggleAntiAFK(state)
-    SafeCall(function()
-        Settings.AntiAFK.Enabled = state -- Обновляем состояние
-        if state then
-            Settings.AntiAFK.Connection = RunService.Heartbeat:Connect(function()
-                pcall(function()
-                    local vu = game:GetService("VirtualUser")
-                    vu:CaptureController()
-                    vu:ClickButton2(Vector2.new())
-                end)
+    Settings.AntiAFK.Enabled = state
+    if state then
+        Settings.AntiAFK.Connection = RunService.Heartbeat:Connect(function()
+            pcall(function()
+                local vu = game:GetService("VirtualUser")
+                vu:CaptureController()
+                vu:ClickButton2(Vector2.new())
             end)
-        else
-            if Settings.AntiAFK.Connection then
-                Settings.AntiAFK.Connection:Disconnect()
-                Settings.AntiAFK.Connection = nil
-            end
+        end)
+    else
+        if Settings.AntiAFK.Connection then
+            Settings.AntiAFK.Connection:Disconnect()
+            Settings.AntiAFK.Connection = nil
         end
-    end)
+    end
 end
 
 -- Интерфейс персонажа
-Tabs.CharacterTab:Slider({
-    Title = "Скорость передвижения",
-    Value = {Min = 0, Max = 200, Default = Settings.Character.WalkSpeed},
-    Callback = function(value)
-        Settings.Character.WalkSpeed = value
-        UpdateCharacter()
-    end
-})
+if Tabs.CharacterTab then
+    Tabs.CharacterTab:Slider({
+        Title = "Скорость передвижения",
+        Value = {Min = 0, Max = 200, Default = Settings.Character.WalkSpeed},
+        Callback = function(value)
+            Settings.Character.WalkSpeed = value
+            UpdateCharacter()
+        end
+    })
 
-Tabs.CharacterTab:Toggle({
-    Title = "Фиксировать скорость",
-    Default = Settings.Character.LockWalk,
-    Callback = function(state)
-        Settings.Character.LockWalk = state
-        UpdateCharacter()
-    end
-})
+    Tabs.CharacterTab:Toggle({
+        Title = "Фиксировать скорость",
+        Default = Settings.Character.LockWalk,
+        Callback = function(state)
+            Settings.Character.LockWalk = state
+            UpdateCharacter()
+        end
+    })
 
-Tabs.CharacterTab:Slider({
-    Title = "Сила прыжка",
-    Value = {Min = 0, Max = 200, Default = Settings.Character.JumpPower},
-    Callback = function(value)
-        Settings.Character.JumpPower = value
-        UpdateCharacter()
-    end
-})
+    Tabs.CharacterTab:Slider({
+        Title = "Сила прыжка",
+        Value = {Min = 0, Max = 200, Default = Settings.Character.JumpPower},
+        Callback = function(value)
+            Settings.Character.JumpPower = value
+            UpdateCharacter()
+        end
+    })
 
-Tabs.CharacterTab:Toggle({
-    Title = "Фиксировать прыжок",
-    Default = Settings.Character.LockJump,
-    Callback = function(state)
-        Settings.Character.LockJump = state
-        UpdateCharacter()
-    end
-})
+    Tabs.CharacterTab:Toggle({
+        Title = "Фиксировать прыжок",
+        Default = Settings.Character.LockJump,
+        Callback = function(state)
+            Settings.Character.LockJump = state
+            UpdateCharacter()
+        end
+    })
+end
 
 -- ESP система
 local colorOptions = {
@@ -371,13 +368,13 @@ local function updateHighlightESP(enabled, color, transparency)
     end
 end
 
-runService.RenderStepped:Connect(updateESP)
+runService:BindToRenderStep("UpdateESP", Enum.RenderPriority.Last.Value, updateESP)
 
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function(character)
         task.wait(0.5)
-        if highlightEspSettings.Enabled then -- Исправлено: enabled -> Enabled
-            updateHighlightESP(true, highlightEspSettings.Color, highlightEspSettings.Transparency) -- Исправлено: color -> Color, transparency -> Transparency
+        if highlightEspSettings.Enabled then
+            updateHighlightESP(true, highlightEspSettings.Color, highlightEspSettings.Transparency)
         end
     end)
 end)
@@ -387,90 +384,96 @@ Players.PlayerRemoving:Connect(function(player)
         playerText[player]:Remove()
         playerText[player] = nil
     end
-    if highlightEspSettings.Enabled then -- Исправлено: enabled -> Enabled
-        updateHighlightESP(false, highlightEspSettings.Color, highlightEspSettings.Transparency) -- Ensure highlight is removed when player leaves
+    if highlightEspSettings.Enabled then
+        updateHighlightESP(false, highlightEspSettings.Color, highlightEspSettings.Transparency)
     end
 end)
 
-Tabs.EspTab:Toggle({
-    Title = "Highlight ESP",
-    Default = highlightEspSettings.Enabled, -- Исправлено: enabled -> Enabled
-    Callback = function(tog)
-        highlightEspSettings.Enabled = tog -- Исправлено: enabled -> Enabled
-        updateHighlightESP(tog, highlightEspSettings.Color, highlightEspSettings.Transparency) -- Исправлено: color -> Color, transparency -> Transparency
-    end
-})
-
-Tabs.EspTab:Toggle({
-    Title = "Включить Names ESP",
-    Default = espSettings.namesEnabled,
-    Callback = function(enabled)
-        espSettings.namesEnabled = enabled
-    end
-})
-
-Tabs.EspTab:Toggle({
-    Title = "Включить Distance ESP",
-    Default = espSettings.distanceEnabled,
-    Callback = function(enabled)
-        espSettings.distanceEnabled = enabled
-    end
-})
-
-Tabs.EspSettingsTab:Dropdown({
-    Title = "Цвет Highlight ESP",
-    Values = { "Green", "Red", "Blue", "Yellow", "Pink", "Purple" },
-    Value = "Red",
-    Callback = function(option)
-        local colors = {
-            Green = Color3.fromRGB(0, 255, 0),
-            Red = Color3.fromRGB(255, 0, 0),
-            Blue = Color3.fromRGB(0, 0, 255),
-            Yellow = Color3.fromRGB(255, 255, 0),
-            Pink = Color3.fromRGB(239, 14, 216),
-            Purple = Color3.fromRGB(180, 14, 240)
-        }
-        highlightEspSettings.Color = colors[option] -- Исправлено: color -> Color
-        if highlightEspSettings.Enabled then -- Исправлено: enabled -> Enabled
-            updateHighlightESP(true, highlightEspSettings.Color, highlightEspSettings.Transparency) -- Исправлено: color -> Color, transparency -> Transparency
+-- ESP Tab
+if Tabs.EspTab then
+    Tabs.EspTab:Toggle({
+        Title = "Highlight ESP",
+        Default = highlightEspSettings.Enabled,
+        Callback = function(tog)
+            highlightEspSettings.Enabled = tog
+            updateHighlightESP(tog, highlightEspSettings.Color, highlightEspSettings.Transparency)
         end
-    end,
-})
+    })
 
-Tabs.EspSettingsTab:Input({
-    Title = "Прозрачность Highlight ESP",
-    Default = 0.5,
-    Placeholder = "Введите прозрачность",
-    Callback = function(input)
-        local value = tonumber(input)
-        if typeof(value) == "number" then
-            highlightEspSettings.Transparency = math.clamp(value, 0, 1) -- Исправлено: transparency -> Transparency
-            if highlightEspSettings.Enabled then -- Исправлено: enabled -> Enabled
-                updateHighlightESP(true, highlightEspSettings.Color, highlightEspSettings.Transparency) -- Исправлено: color -> Color, transparency -> Transparency
+    Tabs.EspTab:Toggle({
+        Title = "Включить Names ESP",
+        Default = espSettings.namesEnabled,
+        Callback = function(enabled)
+            espSettings.namesEnabled = enabled
+        end
+    })
+
+    Tabs.EspTab:Toggle({
+        Title = "Включить Distance ESP",
+        Default = espSettings.distanceEnabled,
+        Callback = function(enabled)
+            espSettings.distanceEnabled = enabled
+        end
+    })
+end
+
+-- ESP Settings Tab
+if Tabs.EspSettingsTab then
+    Tabs.EspSettingsTab:Dropdown({
+        Title = "Цвет Highlight ESP",
+        Values = { "Green", "Red", "Blue", "Yellow", "Pink", "Purple" },
+        Value = "Red",
+        Callback = function(option)
+            local colors = {
+                Green = Color3.fromRGB(0, 255, 0),
+                Red = Color3.fromRGB(255, 0, 0),
+                Blue = Color3.fromRGB(0, 0, 255),
+                Yellow = Color3.fromRGB(255, 255, 0),
+                Pink = Color3.fromRGB(239, 14, 216),
+                Purple = Color3.fromRGB(180, 14, 240)
+            }
+            highlightEspSettings.Color = colors[option]
+            if highlightEspSettings.Enabled then
+                updateHighlightESP(true, highlightEspSettings.Color, highlightEspSettings.Transparency)
             end
-        end
-    end,
-})
+        end,
+    })
 
-Tabs.EspSettingsTab:Dropdown({
-    Title = "Цвет Names ESP",
-    Values = colorOptions,
-    Value = "White",
-    Callback = function(option)
-        espSettings.namesColor = colorValues[option]
-    end,
-})
-Tabs.EspSettingsTab:Dropdown({
-    Title = "Цвет Distance ESP",
-    Values = colorOptions,
-    Value = "White",
-    Callback = function(option)
-        espSettings.distanceColor = colorValues[option]
-    end,
-})
+    Tabs.EspSettingsTab:Input({
+        Title = "Прозрачность Highlight ESP",
+        Default = 0.5,
+        Placeholder = "Введите прозрачность",
+        Callback = function(input)
+            local value = tonumber(input)
+            if typeof(value) == "number" then
+                highlightEspSettings.Transparency = math.clamp(value, 0, 1)
+                if highlightEspSettings.Enabled then
+                    updateHighlightESP(true, highlightEspSettings.Color, highlightEspSettings.Transparency)
+                end
+            end
+        end,
+    })
+
+    Tabs.EspSettingsTab:Dropdown({
+        Title = "Цвет Names ESP",
+        Values = colorOptions,
+        Value = "White",
+        Callback = function(option)
+            espSettings.namesColor = colorValues[option]
+        end,
+    })
+
+    Tabs.EspSettingsTab:Dropdown({
+        Title = "Цвет Distance ESP",
+        Values = colorOptions,
+        Value = "White",
+        Callback = function(option)
+            espSettings.distanceColor = colorValues[option]
+        end,
+    })
+end
 
 -- Аимбот система
-
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -568,7 +571,7 @@ local function updateCameraLookAt()
                 targetIndicator.Adornee = lockedPlayer.Character.HumanoidRootPart
                 targetIndicator.Enabled = true
             else
-targetIndicator.Enabled = false
+                targetIndicator.Enabled = false
             end
         else
             camera.CameraType = defaultCameraType
@@ -579,7 +582,7 @@ targetIndicator.Enabled = false
         camera.CameraType = defaultCameraType
         lockedPlayer = nil
         targetIndicator.Enabled = false
-    end
+end
 end
 
 local function getUpdatedPlayerList()
@@ -593,66 +596,69 @@ local function getUpdatedPlayerList()
     return dropdownValues
 end
 
-Tabs.AimbotTab:Toggle({
-    Title = "Сфокусировать камеру на игрока",
-    Default = false,
-    Callback = function(Value)
-        isCameraLocked = Value
-        if Value then
-            camera.CameraType = Enum.CameraType.Scriptable
-            RunService:BindToRenderStep("UpdateCameraLookAt", Enum.RenderPriority.Camera.Value + 1, updateCameraLookAt)
+-- Aimbot Tab
+if Tabs.AimbotTab then
+    Tabs.AimbotTab:Toggle({
+        Title = "Сфокусировать камеру на игрока",
+        Default = false,
+        Callback = function(Value)
+            isCameraLocked = Value
+            if Value then
+                camera.CameraType = Enum.CameraType.Scriptable
+                RunService:BindToRenderStep("UpdateCameraLookAt", Enum.RenderPriority.Camera.Value + 1, updateCameraLookAt)
+                if dropdownElement then
+                    dropdownElement:Set("Values", getUpdatedPlayerList())
+                end
+                if dropdownElement and dropdownElement.Value ~= "None" then
+                    lockedPlayer = getPlayerByName(dropdownElement.Value)
+                elseif Value and dropdownElement and dropdownElement.Value == "None" then
+                    -- При включении и отсутствии выбранного игрока, пытаемся найти ближайшего
+                    lockedPlayer = getNearestPlayer(lockRadius)
+                end
+            else
+                camera.CameraType = defaultCameraType
+                lockedPlayer = nil
+                targetIndicator.Enabled = false
+                RunService:UnbindFromRenderStep("UpdateCameraLookAt")
+            end
+        end
+    })
+
+    dropdownElement = Tabs.AimbotTab:Dropdown({
+        Title = "Сменить фокус на другого игрока",
+        Values = getUpdatedPlayerList(),
+        Value = "None",
+        Callback = function(selectedPlayerName)
+            lockedPlayer = getPlayerByName(selectedPlayerName)
+            if lockedPlayer and isCameraLocked then
+                print("Camera locked to:", selectedPlayerName)
+            elseif isCameraLocked then
+                print("Camera lock target changed to:", selectedPlayerName)
+            end
+        end
+    })
+
+    Tabs.AimbotTab:Slider({
+        Title = "Радиус фокуса",
+        Value = {min = 10, max = 200, Default = lockRadius},
+        Callback = function(Value)
+            lockRadius = Value
+            print("Lock radius changed to:", lockRadius)
+            if isCameraLocked and not lockedPlayer then -- Если ручной выбор не активен, пытаемся обновить цель
+                lockedPlayer = getNearestPlayer(lockRadius)
+            end
+        end
+    })
+
+    Tabs.AimbotTab:Button({
+        Title = "Обновить список игроков",
+        Callback = function()
             if dropdownElement then
                 dropdownElement:Set("Values", getUpdatedPlayerList())
             end
-            if dropdownElement and dropdownElement.Value ~= "None" then
-                lockedPlayer = getPlayerByName(dropdownElement.Value)
-            elseif Value and dropdownElement and dropdownElement.Value == "None" then
-                -- При включении и отсутствии выбранного игрока, пытаемся найти ближайшего
-                lockedPlayer = getNearestPlayer(lockRadius)
-            end
-        else
-            camera.CameraType = defaultCameraType
-            lockedPlayer = nil
-            targetIndicator.Enabled = false
-            RunService:UnbindFromRenderStep("UpdateCameraLookAt")
         end
-    end
-})
-
-dropdownElement = Tabs.AimbotTab:Dropdown({
-    Title = "Сменить фокус на другого игрока",
-    Values = getUpdatedPlayerList(),
-    Value = "None",
-    Callback = function(selectedPlayerName)
-        lockedPlayer = getPlayerByName(selectedPlayerName)
-        if lockedPlayer and isCameraLocked then
-            print("Camera locked to:", selectedPlayerName)
-        elseif isCameraLocked then
-            print("Camera lock target changed to:", selectedPlayerName)
-        end
-    end
-})
-
-Tabs.AimbotTab:Slider({
-    Title = "Радиус фокуса",
-    Value = {min = 10, max = 200, Default = lockRadius},
-    Callback = function(Value)
-        lockRadius = Value
-        print("Lock radius changed to:", lockRadius)
-        if isCameraLocked and not lockedPlayer then -- Если ручной выбор не активен, пытаемся обновить цель
-            lockedPlayer = getNearestPlayer(lockRadius)
-        end
-    end
-})
-
-Tabs.AimbotTab:Button({
-    Title = "Обновить список игроков",
-    Callback = function()
-        if dropdownElement then
-            dropdownElement:Set("Values", getUpdatedPlayerList())
-        end
-    end
-})
+    })
+end
 
 Players.PlayerAdded:Connect(function(player)
     if isCameraLocked and dropdownElement then
@@ -682,63 +688,64 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Настройки
-
-Tabs.SettingsTab:Toggle({
-    Title = "Хитбоксы",
-    Default = Settings.Hitbox.Enabled,
-    Callback = function(state)
-        Settings.Hitbox.Enabled = state
-        if state then
-            RunService:BindToRenderStep("UpdateHitboxes", Enum.RenderPriority.Last.Value, UpdateHitboxes)
-        else
-            RunService:UnbindFromRenderStep("UpdateHitboxes")
-            for _, box in pairs(Settings.Hitbox.Adornments) do
-                SafeCall(function() box:Destroy() end)
+-- Settings Tab
+if Tabs.SettingsTab then
+    Tabs.SettingsTab:Toggle({
+        Title = "Хитбоксы",
+        Default = Settings.Hitbox.Enabled,
+        Callback = function(state)
+            Settings.Hitbox.Enabled = state
+            if state then
+                RunService:BindToRenderStep("UpdateHitboxes", Enum.RenderPriority.Last.Value, UpdateHitboxes)
+            else
+                RunService:UnbindFromRenderStep("UpdateHitboxes")
+                for _, box in pairs(Settings.Hitbox.Adornments) do
+                    SafeCall(function() box:Destroy() end)
+                end
+                Settings.Hitbox.Adornments = {}
             end
-            Settings.Hitbox.Adornments = {}
         end
-    end
-})
+    })
 
-Tabs.SettingsTab:Slider({
-    Title = "Размер хитбокса",
-    Value = {Min=1, Max=10, Default=Settings.Hitbox.Size},
-    Callback = function(val)
-        Settings.Hitbox.Size = val
-        if Settings.Hitbox.Enabled then
-            UpdateHitboxes()
+    Tabs.SettingsTab:Slider({
+        Title = "Размер хитбокса",
+        Value = {Min=1, Max=10, Default=Settings.Hitbox.Size},
+        Callback = function(val)
+            Settings.Hitbox.Size = val
+            if Settings.Hitbox.Enabled then
+                UpdateHitboxes()
+            end
         end
-    end
-})
+    })
 
-Tabs.SettingsTab:Colorpicker({
-    Title = "Цвет хитбокса",
-    Default = Settings.Hitbox.Color,
-    Callback = function(col)
-        Settings.Hitbox.Color = col
-        if Settings.Hitbox.Enabled then
-            UpdateHitboxes()
+    Tabs.SettingsTab:Colorpicker({
+        Title = "Цвет хитбокса",
+        Default = Settings.Hitbox.Color,
+        Callback = function(col)
+            Settings.Hitbox.Color = col
+            if Settings.Hitbox.Enabled then
+                UpdateHitboxes()
+            end
         end
-    end
-})
+    })
 
-Tabs.SettingsTab:Toggle({
-    Title = "Анти-AFK",
-    Default = Settings.AntiAFK.Enabled,
-    Callback = function(state)
-        Settings.AntiAFK.Enabled = state
-        ToggleAntiAFK(state)
-    end
-})
+    Tabs.SettingsTab:Toggle({
+        Title = "Анти-AFK",
+        Default = Settings.AntiAFK.Enabled,
+        Callback = function(state)
+            Settings.AntiAFK.Enabled = state
+            ToggleAntiAFK(state)
+        end
+    })
 
-Tabs.SettingsTab:Toggle({
-    Title = "Ноклип",
-    Default = Settings.Noclip.Enabled,
-    Callback = function(state)
-        ToggleNoclip(state)
-    end
-})
+    Tabs.SettingsTab:Toggle({
+        Title = "Ноклип",
+        Default = Settings.Noclip.Enabled,
+        Callback = function(state)
+            ToggleNoclip(state)
+        end
+    })
+end
 
 -- Очистка
 game:BindToClose(function()
@@ -761,6 +768,4 @@ end)
 
 -- Инициализация
 localPlayer.CharacterAdded:Connect(UpdateCharacter)
-RunService:BindToRenderStep("UpdateESP", Enum.RenderPriority.Last.Value, UpdateESP)
 Window:Open()
-              
