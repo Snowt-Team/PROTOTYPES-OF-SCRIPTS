@@ -1,0 +1,726 @@
+local success, WindUI = pcall(function()
+    return loadstring(game:HttpGet("https://tree-hub.vercel.app/api/UI/WindUI"))()
+end)
+
+if not success then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Ошибка",
+        Text = "Не удалось загрузить библиотеку UI",
+        Duration = 5
+    })
+    return
+end
+
+-- Сервисы
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- Настройки
+local Settings = {
+    Hitbox = {
+        Enabled = false,
+        Size = 5,
+        Color = Color3.new(1, 0, 0),
+        Adornments = {}
+    },
+    Noclip = {
+        Enabled = false,
+        Connection = nil
+    },
+    AntiAFK = {
+        Enabled = false,
+        Connection = nil
+    },
+    CharacterSettings = {
+    WalkSpeed = {
+        Value = 16,
+        Default = 16,
+        Locked = false
+    },
+    JumpPower = {
+        Value = 50,
+        Default = 50,
+        Locked = false
+    }
+},
+    ESP = {
+        Names = false,
+        Distance = false,
+        Highlight = {
+            Enabled = false,
+            Color = Color3.new(1, 0, 0),
+            Transparency = 0.5
+        }
+    },
+    Aimbot = {
+    Enabled = false,
+    AimKey = "RightShift",
+    AimRadius = 100,
+    PredictionFactor = 0.1,
+    SmoothingFactor = 0.1,
+    TargetPart = "Head",
+    OnlyVisible = true,
+    TeamCheck = false,
+}
+    }
+
+-- Инициализация окна
+local Window = WindUI:CreateWindow({
+    Title = "SNT HUB | ESP&AIMBOT Prototype",
+    Size = UDim2.fromOffset(300, 270),
+    Theme = "Dark",
+    Transparent = true,
+    HasOutline = true
+})
+
+local Tabs = {
+    Character = Window:Tab({Title = "Character", Icon = "user"}),
+    EspT = Window:Tab({Title = "Персонаж", Icon = "user"}),
+    EspS = Window:Tab({Title = "ESP", Icon = "eye"}),
+    Aimbot = Window:Tab({Title = "Аимбот", Icon = "crosshair"}),
+    Settings = Window:Tab({Title = "Настройки", Icon = "settings"})
+}
+
+-- Общие функции
+local function SafeCall(fn)
+    local success, err = pcall(fn)
+    if not success then
+        warn("Ошибка:", err)
+    end
+end
+
+-- Система персонажа
+local function UpdateCharacter()
+    SafeCall(function()
+        local character = localPlayer.Character
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                if not Settings.Character.LockWalk then
+                    humanoid.WalkSpeed = Settings.Character.WalkSpeed
+                end
+                if not Settings.Character.LockJump then
+                    humanoid.JumpPower = Settings.Character.JumpPower
+                end
+            end
+        end
+    end)
+end
+
+-- Ноклип
+local function ToggleNoclip(state)
+    SafeCall(function()
+        if state then
+            Settings.Noclip.Connection = RunService.Stepped:Connect(function()
+                local character = localPlayer.Character
+                if character then
+                    for _, part in pairs(character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        else
+            if Settings.Noclip.Connection then
+                Settings.Noclip.Connection:Disconnect()
+            end
+        end
+    end)
+end
+
+-- Хитбоксы
+local function UpdateHitboxes()
+    SafeCall(function()
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= localPlayer then
+                local character = player.Character
+                local adornment = Settings.Hitbox.Adornments[player]
+                
+                if character and Settings.Hitbox.Enabled then
+                    local root = character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        if not adornment then
+                            adornment = Instance.new("BoxHandleAdornment")
+                            adornment.Adornee = root
+                            adornment.Size = Vector3.new(Settings.Hitbox.Size, Settings.Hitbox.Size, Settings.Hitbox.Size)
+                            adornment.Color3 = Settings.Hitbox.Color
+                            adornment.Transparency = 0.4
+                            adornment.Parent = root
+                            Settings.Hitbox.Adornments[player] = adornment
+                        else
+                            adornment.Size = Vector3.new(Settings.Hitbox.Size, Settings.Hitbox.Size, Settings.Hitbox.Size)
+                            adornment.Color3 = Settings.Hitbox.Color
+                        end
+                    end
+                elseif adornment then
+                    adornment:Destroy()
+                    Settings.Hitbox.Adornments[player] = nil
+                end
+            end
+        end
+    end)
+end
+
+-- Анти-AFK
+local function ToggleAntiAFK(state)
+    SafeCall(function()
+        if state then
+            Settings.AntiAFK.Connection = RunService.Heartbeat:Connect(function()
+                pcall(function()
+                    local vu = game:GetService("VirtualUser")
+                    vu:CaptureController()
+                    vu:ClickButton2(Vector2.new())
+                end)
+            end)
+        else
+            if Settings.AntiAFK.Connection then
+                Settings.AntiAFK.Connection:Disconnect()
+            end
+        end
+    end)
+end
+
+-- Интерфейс персонажа
+Tabs.Character:Slider({
+    Title = "Скорость передвижения",
+    Value = {Min = 0, Max = 200, Default = 16},
+    Callback = function(value)
+        Settings.Character.WalkSpeed = value
+        UpdateCharacter()
+    end
+})
+
+Tabs.Character:Toggle({
+    Title = "Фиксировать скорость",
+    Default = false,
+    Callback = function(state)
+        Settings.Character.LockWalk = state
+        UpdateCharacter()
+    end
+})
+
+Tabs.Character:Slider({
+    Title = "Сила прыжка",
+    Value = {Min = 0, Max = 200, Default = 50},
+    Callback = function(value)
+        Settings.Character.JumpPower = value
+        UpdateCharacter()
+    end
+})
+
+Tabs.Character:Toggle({
+    Title = "Фиксировать прыжок",
+    Default = false,
+    Callback = function(state)
+        Settings.Character.LockJump = state
+        UpdateCharacter()
+    end
+})
+
+-- ESP система
+local colorOptions = {
+    "White", "Red", "Blue", "Green", "Yellow"
+}
+
+local colorValues = {
+    White = Color3.new(1, 1, 1),
+    Red = Color3.new(1, 0, 0),
+    Blue = Color3.new(0, 0, 1),
+    Green = Color3.new(0, 1, 0),
+    Yellow = Color3.new(1, 1, 0)
+}
+
+local function isAlive(player)
+    local character = player.Character
+    if character and character:FindFirstChild("Humanoid") then
+        return character:FindFirstChild("Humanoid").Health > 0
+    end
+    return false
+end
+
+local function getDistance(player)
+    if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and
+       player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        return (localPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+    else
+        return nil
+    end
+end
+
+local function createText()
+    local text = Drawing.new("Text")
+    text.Size = 18
+    text.Outline = true
+    text.Center = true
+    text.Visible = false
+    return text
+end
+
+local function updateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= localPlayer then
+            -- Создаем/получаем текстовый объект для игрока
+            if not playerText[player] then
+                playerText[player] = createText()
+            end
+            
+            local text = playerText[player]
+            local character = player.Character
+            text.Visible = false -- По умолчанию скрываем
+            
+            -- Проверяем, нужно ли вообще отображать ESP
+            if (espSettings.namesEnabled or espSettings.distanceEnabled) and character then
+                local head = character:FindFirstChild("Head")
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                
+                if head and humanoidRootPart then
+                    local screenPos, onScreen = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 1.5, 0))
+                    
+                    if onScreen then
+                        -- Формируем текст в зависимости от настроек
+                        local displayText = ""
+                        local color = espSettings.namesColor
+                        
+                        if espSettings.namesEnabled then
+                            displayText = player.Name
+                        end
+                        
+                        if espSettings.distanceEnabled then
+                            local distance = getDistance(player)
+                            if distance then
+                                if displayText ~= "" then
+                                    displayText = displayText .. " "
+                                end
+                                displayText = displayText .. "["..math.floor(distance).." studs]"
+                                color = espSettings.distanceColor
+                            end
+                        end
+                        
+                        -- Устанавливаем параметры текста
+                        if displayText ~= "" then
+                            text.Text = displayText
+                            text.Color = color
+                            text.Position = Vector2.new(screenPos.X, screenPos.Y)
+                            text.Visible = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function updateHighlightESP(enabled, color, transparency)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
+            if isAlive(player) then
+                local highlight = player.Character:FindFirstChild("Highlight")
+                if enabled then
+                    if not highlight then
+                        local newHighlight = Instance.new("Highlight")
+                        newHighlight.Parent = player.Character
+                        highlight = newHighlight
+                    end
+                    highlight.FillColor = color
+                    highlight.FillTransparency = transparency
+                else
+                    if highlight then
+                        highlight:Destroy()
+                    end
+                end
+            else
+                local highlight = player.Character:FindFirstChild("Highlight")
+                if highlight then
+                    highlight:Destroy()
+                end
+            end
+        end
+    end
+end
+
+runService.RenderStepped:Connect(updateESP)
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        task.wait(0.5)
+        if highlightEspSettings.enabled then
+            updateHighlightESP(true, highlightEspSettings.color, highlightEspSettings.transparency)
+        end
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if playerText[player] then
+        playerText[player]:Remove()
+        playerText[player] = nil
+    end
+    if highlightEspSettings.enabled then
+        updateHighlightESP(true, highlightEspSettings.color, highlightEspSettings.transparency)
+    end
+end)
+
+Tabs.EspT:Toggle({
+    Title = "Highlight ESP",
+    Default = false,
+    Callback = function(tog)
+        highlightEspSettings.enabled = tog
+        updateHighlightESP(tog, highlightEspSettings.color, highlightEspSettings.transparency)
+    end
+})
+
+Tabs.EspT:Toggle({
+    Title = "Включить Names ESP",
+    Default = false,
+    Callback = function(enabled)
+        espSettings.namesEnabled = enabled
+    end
+})
+
+Tabs.EspT:Toggle({
+    Title = "Включить Distance ESP",
+    Default = false,
+    Callback = function(enabled)
+        espSettings.distanceEnabled = enabled
+    end
+})
+
+
+
+Tabs.EspS:Dropdown({
+    Title = "Цвет Highlight ESP",
+    Values = { "Green", "Red", "Blue", "Yellow", "Pink", "Purple" },
+    Value = "Red",
+    Callback = function(option)
+        local colors = {
+            Green = Color3.fromRGB(0, 255, 0),
+            Red = Color3.fromRGB(255, 0, 0),
+            Blue = Color3.fromRGB(0, 0, 255),
+            Yellow = Color3.fromRGB(255, 255, 0),
+            Pink = Color3.fromRGB(239, 14, 216),
+            Purple = Color3.fromRGB(180, 14, 240)
+        }
+        highlightEspSettings.color = colors[option]
+        if highlightEspSettings.enabled then
+            updateHighlightESP(true, highlightEspSettings.color, highlightEspSettings.transparency)
+        end
+    end,
+})
+
+Tabs.EspS:Input({
+    Title = "Прозрачность Highlight ESP",
+    Default = 0.5,
+    Placeholder = "Введите прозрачность",
+    Callback = function(input)
+        local value = tonumber(input)
+        if typeof(value) == "number" then
+            highlightEspSettings.transparency = math.clamp(value, 0, 1)
+            if highlightEspSettings.enabled then
+                updateHighlightESP(true, highlightEspSettings.color, highlightEspSettings.transparency)
+            end
+        end
+    end,
+})
+
+Tabs.EspS:Dropdown({
+    Title = "Цвет Names ESP",
+    Values = colorOptions,
+    Value = "White",
+    Callback = function(option)
+        espSettings.namesColor = colorValues[option]
+    end,
+})
+
+Tabs.EspS:Dropdown({
+    Title = "Цвет Distance ESP",
+    Values = colorOptions,
+    Value = "White",
+    Callback = function(option)
+        espSettings.distanceColor = colorValues[option]
+    end,
+})
+
+-- Аимбот система
+
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local localPlayer = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local isCameraLocked = false
+local lockedPlayer = nil
+local defaultCameraType = Enum.CameraType.Custom
+local lockRadius = 50 -- Значение по умолчанию для радиуса
+local cameraRotationSpeed = 0.1 -- Скорость вращения камеры (чем меньше, тем медленнее)
+
+-- Targeting Indicator (BillboardGui)
+local targetIndicator = Instance.new("BillboardGui")
+targetIndicator.Size = UDim2.new(2, 0, 1, 0)
+targetIndicator.AlwaysOnTop = true
+targetIndicator.Enabled = false
+
+local arrow = Instance.new("ImageLabel")
+arrow.Size = UDim2.new(1, 0, 1, 0)
+arrow.BackgroundTransparency = 1
+arrow.Image = "rbxassetid://602361387"
+arrow.ImageColor3 = Color3.new(1, 1, 0)
+arrow.Position = UDim2.new(0.5, 0, -1.5, 0)
+arrow.AnchorPoint = Vector2.new(0.5, 0.5)
+arrow.Parent = targetIndicator
+
+targetIndicator.Parent = Workspace
+
+local function getNearestPlayer(radius)
+    local nearestPlayer = nil
+    local minDistanceSquared = math.huge
+
+    if not localPlayer or not localPlayer.Character or not localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        return nil
+    end
+
+    local localRootPart = localPlayer.Character.HumanoidRootPart.Position
+
+    for _, player in Players:GetPlayers() do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local otherRootPart = player.Character.HumanoidRootPart.Position
+            local distanceSquared = (localRootPart - otherRootPart).Magnitude^2
+
+            if distanceSquared <= radius^2 and distanceSquared < minDistanceSquared then
+                minDistanceSquared = distanceSquared
+                nearestPlayer = player
+            end
+        end
+    end
+    return nearestPlayer
+end
+
+local function getPlayerByName(playerName)
+    if playerName == "None" then
+        return nil
+    end
+    for _, player in Players:GetPlayers() do
+        if player.Name == playerName and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            return player
+        end
+    end
+    return nil
+end
+
+local function updateCameraLookAt()
+    if isCameraLocked and localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local targetPosition = nil
+        if lockedPlayer and lockedPlayer.Character and lockedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            targetPosition = lockedPlayer.Character.HumanoidRootPart.Position
+        elseif isCameraLocked then -- Попытка найти ближайшего, если игрок не выбран вручную
+            local nearest = getNearestPlayer(lockRadius)
+            if nearest then
+                lockedPlayer = nearest
+                targetPosition = lockedPlayer.Character.HumanoidRootPart.Position
+            end
+        end
+
+        if targetPosition then
+            camera.CameraType = Enum.CameraType.Scriptable
+            local localRootPosition = localPlayer.Character.HumanoidRootPart.Position
+            local desiredLookAt = targetPosition
+            local cameraOffset = Vector3.new(0, 2, 5)
+            local desiredCameraPosition = localRootPosition + (desiredLookAt - localRootPosition).Unit * cameraOffset.Z + Vector3.new(0, cameraOffset.Y, 0)
+
+            local currentCF = camera.CFrame
+            local desiredCF = CFrame.lookAt(desiredCameraPosition, desiredLookAt)
+
+            camera.CFrame = currentCF:Lerp(desiredCF, cameraRotationSpeed)
+
+            targetIndicator.Adornee = lockedPlayer.Character.HumanoidRootPart
+            targetIndicator.Enabled = true
+        else
+            camera.CameraType = defaultCameraType
+            lockedPlayer = nil
+            targetIndicator.Enabled = false
+        end
+    else
+        camera.CameraType = defaultCameraType
+        lockedPlayer = nil
+        targetIndicator.Enabled = false
+    end
+end
+
+local function getUpdatedPlayerList()
+    local dropdownValues = {"None"}
+    for _, player in Players:GetPlayers() do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(dropdownValues, player.Name)
+        end
+    end
+    table.sort(dropdownValues)
+    return dropdownValues
+end
+
+local dropdownElement
+
+local AimbotTab
+
+Tabs.Aimbot:Toggle({
+    Title = "Сфокусировать камеру на игрока",
+    Default = false,
+    Callback = function(Value)
+        isCameraLocked = Value
+        if Value == true then
+            camera.CameraType = Enum.CameraType.Scriptable
+            RunService.RenderStepped:Connect(updateCameraLookAt)
+            if dropdownElement then
+                dropdownElement:Set("Values", getUpdatedPlayerList())
+            end
+            if dropdownElement and dropdownElement.Value ~= "None" then
+                lockedPlayer = getPlayerByName(dropdownElement.Value)
+            elseif Value == true and dropdownElement and dropdownElement.Value == "None" then
+                -- При включении и отсутствии выбранного игрока, пытаемся найти ближайшего
+                lockedPlayer = getNearestPlayer(lockRadius)
+            end
+        else
+            camera.CameraType = defaultCameraType
+            lockedPlayer = nil
+            targetIndicator.Enabled = false
+            for _, connection in pairs(RunService:GetConnections("RenderStepped")) do
+                if connection.Function == updateCameraLookAt then
+                    connection:Disconnect()
+                    break
+                end
+            end
+        end
+    end
+})
+
+dropdownElement = Tabs.Aimbot:Dropdown({
+    Title = "Сменить фокус на другого игрока",
+    Values = getUpdatedPlayerList(),
+    Value = "None",
+    Callback = function(selectedPlayerName)
+        lockedPlayer = getPlayerByName(selectedPlayerName)
+        if lockedPlayer and isCameraLocked then
+            print("Camera locked to:", selectedPlayerName)
+        elseif isCameraLocked then
+            print("Camera lock disabled.")
+        end
+    end
+})
+
+Tabs.Aimbot:Slider({
+    Title = "Радиус фокуса",
+    Value = {min = 10, max = 200, Default = 100},
+    Callback = function(Value)
+        lockRadius = Value
+        print("Lock radius changed to:", lockRadius)
+        if isCameraLocked and not lockedPlayer then -- Если ручной выбор не активен, пытаемся обновить цель
+            lockedPlayer = getNearestPlayer(lockRadius)
+        end
+    end
+})
+
+Tabs.Aimbot:Button({
+    Title = "Обновить список игроков",
+    Callback = function()
+        if dropdownElement then
+            dropdownElement:Set("Values", getUpdatedPlayerList())
+        end
+    end
+})
+
+Players.PlayerAdded:Connect(function(player)
+    if isCameraLocked and dropdownElement then
+        task.wait(0.5)
+        dropdownElement:Set("Values", getUpdatedPlayerList())
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if isCameraLocked and dropdownElement then
+        dropdownElement:Set("Values", getUpdatedPlayerList())
+        if lockedPlayer == player then
+            lockedPlayer = nil
+            camera.CameraType = defaultCameraType
+            targetIndicator.Enabled = false
+        end
+    end
+end)
+
+-- Настройки
+
+Tabs.Settings:Toggle({
+    Title = "Хитбоксы",
+    Callback = function(state)
+        Settings.Hitbox.Enabled = state
+        if state then
+            RunService.Heartbeat:Connect(UpdateHitboxes)
+        else
+            for _, box in pairs(Settings.Hitbox.Adornments) do
+                box:Destroy()
+            end
+            Settings.Hitbox.Adornments = {}
+        end
+    end
+})
+
+Tabs.Settings:Slider({
+    Title = "Размер хитбокса",
+    Value = {Min=1, Max=10, Default=5},
+    Callback = function(val)
+        Settings.Hitbox.Size = val
+        UpdateHitboxes()
+    end
+})
+
+Tabs.Settings:Colorpicker({
+    Title = "Цвет хитбокса",
+    Default = Color3.new(1,0,0),
+    Callback = function(col)
+        Settings.Hitbox.Color = col
+        UpdateHitboxes()
+    end
+})
+
+Tabs.Settings:Toggle({
+    Title = "Анти-AFK",
+    Callback = function(state)
+        Settings.AntiAFK.Enabled = state
+        ToggleAntiAFK(state)
+    end
+})
+
+Tabs.Settings:Toggle({
+    Title = "Ноклип",
+    Default = false,
+    Callback = ToggleNoclip
+})
+
+Tabs.Settings:Toggle({
+    Title = "Анти-AFK",
+    Default = false,
+    Callback = ToggleAntiAFK
+})
+
+-- Очистка
+game:BindToClose(function()
+    ToggleNoclip(false)
+    ToggleAntiAFK(false)
+    for _, adornment in pairs(Settings.Hitbox.Adornments) do
+        adornment:Destroy()
+    end
+    for _, esp in pairs(espObjects) do
+        esp.Highlight:Destroy()
+        esp.Text:Remove()
+    end
+end)
+
+-- Инициализация
+localPlayer.CharacterAdded:Connect(UpdateCharacter)
+RunService.Heartbeat:Connect(UpdateHitboxes)
+RunService.RenderStepped:Connect(UpdateESP)
+Window:Open()
