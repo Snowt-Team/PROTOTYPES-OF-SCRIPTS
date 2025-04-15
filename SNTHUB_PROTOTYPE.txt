@@ -1,7 +1,7 @@
 local WindUI = loadstring(game:HttpGet("https://tree-hub.vercel.app/api/UI/WindUI"))()
 
 local Window = WindUI:CreateWindow({
-    Title = "Универсальный ESP/AIMBOT | SNT HUB",
+    Title = "(PROTOTYPE) ESP/AIMBOT | SNT HUB",
     Icon = "eye",
     Author = "SnOwT",
     Folder = "SNT Hub",
