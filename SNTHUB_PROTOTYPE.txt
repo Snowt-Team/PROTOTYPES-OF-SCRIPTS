@@ -1,7 +1,61 @@
 local WindUI = loadstring(game:HttpGet("https://tree-hub.vercel.app/api/UI/WindUI"))()
+if not WindUI then
+    warn("Не удалось загрузить WindUI!")
+    return
+end
+
+function gradient(text, startColor, endColor)
+    local result = ""
+    local length = #text
+
+    for i = 1, length do
+        local t = (i - 1) / math.max(length - 1, 1)
+        local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
+        local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
+        local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
+
+        local char = text:sub(i, i)
+        result = result .. "<font color=\"rgb(" .. r ..", " .. g .. ", " .. b .. ")\">" .. char .. "</font>"
+    end
+
+    return result
+end
+
+local Confirmed = false
+
+WindUI:Popup({
+    Title = "Hi!",
+    Icon = "info",
+    Content = "This script made by " .. gradient("SnowT", Color3.fromHex("#00FF87"), Color3.fromHex("#60EFFF")),
+    Buttons = {
+        {
+            Title = "Cancel",
+            --Icon = "",
+            Callback = function() end,
+            Variant = "Tertiary", -- Primary, Secondary, Tertiary
+        },
+        {
+            Title = "Continue",
+            Icon = "arrow-right",
+            Callback = function() Confirmed = true end,
+            Variant = "Primary", -- Primary, Secondary, Tertiary
+        }
+    }
+})
+
+repeat wait() until Confirmed
+
+WindUI:Notify({
+    Title = "SNT HUB",
+    Content = "Скрипт успешно загружен!",
+    Icon = "check-circle",
+    Duration = 3,
+    Background = "rbxassetid://13511292247"
+})
+
 
 local Window = WindUI:CreateWindow({
-    Title = "(PROTOTYPE) ESP/AIMBOT | SNT HUB",
+    Title = "Универсальный ESP/AIMBOT | SNT HUB",
     Icon = "eye",
     Author = "SnOwT",
     Folder = "SNT Hub",
@@ -34,7 +88,8 @@ local Tabs = {
     Character = Window:Tab({ Title = "Персонаж", Icon = "file-cog", Desc = "Изменение настроек персонажа" }),
     ESP = Window:Tab({ Title = "ESP", Icon = "eye", Desc = "Визуальные модификации" }),
     Aimbot = Window:Tab({ Title = "Аимбот", Icon = "axe", Desc = "Автонаводка на врагов" }),
-    Settings = Window:Tab({ Title = "Настройки", Icon = "battery", Desc = "Настройки интерфейса" })
+    Settings = Window:Tab({ Title = "Настройки", Icon = "battery", Desc = "Настройки интерфейса" }),
+    SettingsUI = Window:Tab({ Title = "Настройки UI"})
 }
 
 --[[ НАСТРОЙКИ ПЕРСОНАЖА ]]--
@@ -48,11 +103,20 @@ local CharacterSettings = {
 }
 
 local function updateCharacter()
-    local character = LocalPlayer.Character
-    if not character then return end
-    
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
+    SafeCall(function()
+        local character = LocalPlayer.Character
+        if not character then 
+            WindUI:Notify({
+                Title = "Предупреждение",
+                Content = "Персонаж не найден",
+                Icon = "info",
+                Duration = 3
+            })
+            return 
+        end
+        
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
         if not CharacterSettings.WalkSpeed.Locked then
             humanoid.WalkSpeed = CharacterSettings.WalkSpeed.Value
         end
@@ -60,6 +124,7 @@ local function updateCharacter()
             humanoid.JumpPower = CharacterSettings.JumpPower.Value
         end
     end
+end)
 end
 
 Tabs.Character:Slider({
@@ -288,7 +353,6 @@ arrow.AnchorPoint = Vector2.new(0.5, 0.5)
 arrow.Parent = targetIndicator
 targetIndicator.Parent = Workspace
 
---[[ ДОПОЛНЕННАЯ ЧАСТЬ КОДА ]]--
 local function getNearestPlayer(radius)
     if not LocalPlayer.Character 
         or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") 
@@ -319,6 +383,7 @@ local function getNearestPlayer(radius)
 end
 
 local function updateCameraLookAt()
+    SafeCall(function()
     if isCameraLocked then
         -- Автоматический поиск цели если текущая невалидна
         if not lockedPlayer 
@@ -348,6 +413,15 @@ local function updateCameraLookAt()
         camera.CameraType = defaultCameraType
         targetIndicator.Enabled = false
     end
+    if not isValidTarget(lockedPlayer) then
+            WindUI:Notify({
+                Title = "Цель недействительна",
+                Content = "Выберите другую цель",
+                Icon = "info",
+                Duration = 3
+            })
+        end
+    end)
 end
 
 --[[ ОБНОВЛЕННЫЕ КОЛЛБЭКИ ]]--
@@ -500,11 +574,20 @@ local Settings = {
         Connection = nil
     }
 }
-
 local function SafeCall(fn)
     local s, err = pcall(fn)
-    if not s then warn("Ошибка:", err) end
+    if not s then 
+        WindUI:Notify({
+            Title = "Ошибка",
+            Content = "Произошла ошибка: " .. tostring(err),
+            Icon = "alert",
+            Duration = 5,
+            Background = "rbxassetid://13511292247"
+        })
+    end
+    return s
 end
+
 
 -- Ноклип
 local function ToggleNoclip(state)
@@ -525,6 +608,12 @@ local function ToggleNoclip(state)
                 Settings.Noclip.Connection:Disconnect()
             end
         end
+    WindUI:Notify({
+            Title = "Ноклип",
+            Content = state and "Активирован" or "Деактивирован",
+            Icon = "check-circle",
+            Duration = 2
+        })
     end)
 end
 
@@ -578,6 +667,12 @@ local function ToggleAntiAFK(state)
                 Settings.AntiAFK.Connection:Disconnect()
             end
         end
+        WindUI:Notify({
+            Title = "Анти-AFK",
+            Content = state and "Активирован" or "Деактивирован",
+            Icon = "check-circle",
+            Duration = 2
+        })
     end)
 end
 
@@ -638,3 +733,193 @@ game:BindToClose(function()
     ToggleAntiAFK(false)
     for _,v in pairs(Settings.Hitbox.Adornments) do v:Destroy() end
 end)
+
+local HttpService = game:GetService("HttpService")
+
+local folderPath = "WindUI"
+makefolder(folderPath)
+
+local function SaveFile(fileName, data)
+    local filePath = folderPath .. "/" .. fileName .. ".json"
+    local jsonData = HttpService:JSONEncode(data)
+    writefile(filePath, jsonData)
+end
+
+local function LoadFile(fileName)
+    local filePath = folderPath .. "/" .. fileName .. ".json"
+    if isfile(filePath) then
+        local jsonData = readfile(filePath)
+        return HttpService:JSONDecode(jsonData)
+    end
+end
+
+local function ListFiles()
+    local files = {}
+    for _, file in ipairs(listfiles(folderPath)) do
+        local fileName = file:match("([^/]+)%.json$")
+        if fileName then
+            table.insert(files, fileName)
+        end
+    end
+    return files
+end
+
+local themeValues = {}
+for name, _ in pairs(WindUI:GetThemes()) do
+    table.insert(themeValues, name)
+end
+
+
+local themeDropdown = Tabs.SettingsUI:Dropdown({
+    Title = "Выбери тему",
+    Multi = false,
+    AllowNone = false,
+    Value = nil,
+    Values = themeValues,
+    Callback = function(theme)
+        WindUI:SetTheme(theme)
+    end
+})
+themeDropdown:Select(WindUI:GetCurrentTheme())
+
+local ToggleTransparency = Tabs.SettingsUI:Toggle({
+    Title = "Toggle Window Transparency",
+    Callback = function(e)
+        Window:ToggleTransparency(e)
+    end,
+    Value = WindUI:GetTransparency()
+})
+
+local fileNameInput = ""
+Tabs.SettingsUI:Input({
+    Title = "Напиши название файла",
+    PlaceholderText = "Enter file name",
+    Callback = function(text)
+        fileNameInput = text
+    end
+})
+
+Tabs.SettingsUI:Button({
+    Title = "Сохранить файл",
+    Callback = function()
+        if fileNameInput ~= "" then
+            SaveFile(fileNameInput, { Transparent = WindUI:GetTransparency(), Theme = WindUI:GetCurrentTheme() })
+        end
+    end
+})
+
+local filesDropdown
+local files = ListFiles()
+
+filesDropdown = Tabs.SettingsUI:Dropdown({
+    Title = "Выбрать файл",
+    Multi = false,
+    AllowNone = true,
+    Values = files,
+    Callback = function(selectedFile)
+        fileNameInput = selectedFile
+    end
+})
+
+Tabs.SettingsUI:Button({
+    Title = "Загрузить файл",
+    Callback = function()
+        if fileNameInput ~= "" then
+            local data = LoadFile(fileNameInput)
+            if data then
+                WindUI:Notify({
+                    Title = "File Loaded",
+                    Content = "Loaded data: " .. HttpService:JSONEncode(data),
+                    Duration = 5,
+                })
+                if data.Transparent then 
+                    Window:ToggleTransparency(data.Transparent)
+                    ToggleTransparency:SetValue(data.Transparent)
+                end
+                if data.Theme then WindUI:SetTheme(data.Theme) end
+            end
+        end
+    end
+})
+
+Tabs.SettingsUI:Button({
+    Title = "Перезаписатт файл",
+    Callback = function()
+        if fileNameInput ~= "" then
+            SaveFile(fileNameInput, { Transparent = WindUI:GetTransparency(), Theme = WindUI:GetCurrentTheme() })
+        end
+    end
+})
+
+Tabs.SettingsUI:Button({
+    Title = "Обновить список",
+    Callback = function()
+        filesDropdown:Refresh(ListFiles())
+    end
+})
+
+local currentThemeName = WindUI:GetCurrentTheme()
+local themes = WindUI:GetThemes()
+
+local ThemeAccent = themes[currentThemeName].Accent
+local ThemeOutline = themes[currentThemeName].Outline
+local ThemeText = themes[currentThemeName].Text
+local ThemePlaceholderText = themes[currentThemeName].PlaceholderText
+
+function updateTheme()
+    WindUI:AddTheme({
+        Name = currentThemeName,
+        Accent = ThemeAccent,
+        Outline = ThemeOutline,
+        Text = ThemeText,
+        PlaceholderText = ThemePlaceholderText
+    })
+    WindUI:SetTheme(currentThemeName)
+end
+
+local CreateInput = Tabs.SettingsUI:Input({
+    Title = "Название темы",
+    Value = currentThemeName,
+    Callback = function(name)
+        currentThemeName = name
+    end
+})
+
+Tabs.SettingsUI:Colorpicker({
+    Title = "Цвет фона",
+    Default = Color3.fromHex(ThemeAccent),
+    Callback = function(color)
+        ThemeAccent = color:ToHex()
+    end
+})
+
+Tabs.SettingsUI:Colorpicker({
+    Title = "Цвет границ UI",
+    Default = Color3.fromHex(ThemeOutline),
+    Callback = function(color)
+        ThemeOutline = color:ToHex()
+    end
+})
+
+Tabs.SettingsUI:Colorpicker({
+    Title = "Цвет текста",
+    Default = Color3.fromHex(ThemeText),
+    Callback = function(color)
+        ThemeText = color:ToHex()
+    end
+})
+
+Tabs.SettingsUI:Colorpicker({
+    Title = "Цвет заполнителя текста",
+    Default = Color3.fromHex(ThemePlaceholderText),
+    Callback = function(color)
+        ThemePlaceholderText = color:ToHex()
+    end
+})
+
+Tabs.SettingsUI:Button({
+    Title = "Обновить тему",
+    Callback = function()
+        updateTheme()
+    end
+})
