@@ -3,6 +3,12 @@ if not WindUI then
     warn("Не удалось загрузить WindUI!")
     return
 end
+
+-- FIXED 1: Добавьте проверку на загрузку игры и игрока
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+LocalPlayer:WaitForChild("PlayerGui")
+
 local lastErrorTime = 0
    local function SafeCall(fn)
        local s, err = pcall(fn)
@@ -58,7 +64,7 @@ WindUI:Popup({
     }
 })
 
-repeat wait() until Confirmed
+repeat task.wait() until Confirmed
 
 WindUI:Notify({
     Title = "SNT HUB",
@@ -76,7 +82,7 @@ local Window = WindUI:CreateWindow({
     Folder = "SNT Hub",
     Size = UDim2.fromOffset(340, 320),
     Transparent = true,
-    Theme = "Black",
+    Theme = "Nord",
     SideBarWidth = 200,
     HasOutline = true,
     KeySystem = {
@@ -104,7 +110,7 @@ local Tabs = {
     ESP = Window:Tab({ Title = "ESP", Icon = "eye", Desc = "Визуальные модификации" }),
     Aimbot = Window:Tab({ Title = "Аимбот", Icon = "axe", Desc = "Автонаводка на врагов" }),
     Settings = Window:Tab({ Title = "Настройки", Icon = "battery", Desc = "Общие настройки" }),
-    SettUI = Window:Tab({ Title = ",Настройки UI", Icon = "cog", Desc = "Различные настройки UI."})
+    SettUI = Window:Tab({ Title = "Настройки UI", Icon = "cog", Desc = "Различные настройки UI."})
 }
 
 --[[ НАСТРОЙКИ ПЕРСОНАЖА ]]--
@@ -652,7 +658,7 @@ local function ToggleAntiAFK(state)
                 end)
             end)
         else
- if Settings.AntiAFK.Connection then
+            if Settings.AntiAFK.Connection then
                 Settings.AntiAFK.Connection:Disconnect()
             end
         end
