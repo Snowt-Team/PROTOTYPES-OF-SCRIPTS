@@ -1,3 +1,4 @@
+local WindUI = loadstring(game:HttpGet("https://tree-hub.vercel.app/api/UI/WindUI"))()
 if not WindUI then
     warn("Не удалось загрузить WindUI!")
     return
