@@ -728,7 +728,8 @@ end)
 local HttpService = game:GetService("HttpService")
 
 local folderPath = "WindUI"
-makefolder(folderPath)
+if not isfolder(folderPath) then 
+    makefolder(folderPath) end
 
 local function SaveFile(fileName, data)
     local filePath = folderPath .. "/" .. fileName .. ".json"
@@ -756,6 +757,8 @@ local function ListFiles()
 end
 
 Tabs.SettUI:Section({ Title = "Окно" })
+
+local themeValues = {"Black", "Dark", "Light", "Nord"}
 
 local themeDropdown = Tabs.SettUI:Dropdown({
     Title = "Выбери тему",
@@ -808,7 +811,7 @@ Tabs.SettUI:Section({ Title = "Загрузка" })
 local filesDropdown
 local files = ListFiles()
 
-filesDropdown = Tabs.WindowTab:Dropdown({
+filesDropdown = Tabs.SettUI:Dropdown({
     Title = "Select File",
     Multi = false,
     AllowNone = true,
