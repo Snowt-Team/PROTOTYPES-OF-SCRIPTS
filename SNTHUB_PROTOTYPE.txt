@@ -56,7 +56,7 @@ local Window = WindUI:CreateWindow({
     Title = "[Prototype] Universal | SNT Hub [v1.1]",
     Icon = "eye",
     Author = "SnOwT",
-    Folder = "SNT Hub",
+    Folder = "WindUI",
     Size = UDim2.fromOffset(340, 320),
     Transparent = true,
     Theme = "Dark",
@@ -84,17 +84,15 @@ Window:EditOpenButton({
 })
 
 local Tabs = {
-    Character = Window:Tab({ Title = "Персонаж", Icon = "file-cog", Desc = "Изменение настроек персонажа" }),
-    ESP = Window:Tab({ Title = "ESP", Icon = "eye", Desc = "Визуальные модификации" }),
-    Aimbot = Window:Tab({ Title = "Аимбот", Icon = "axe", Desc = "Автонаводка на врагов" }),
-    Settings = Window:Tab({ Title = "Настройки", Icon = "battery", Desc = "Общие настройки" }),
+    CharacterTab = Window:Tab({ Title = "Character", Icon = "file-cog", Desc = "Change character settings" }),
+    EspTab = Window:Tab({ Title = "ESP", Icon = "eye", Desc = "See more then default." }),
+    AimbotTab = Window:Tab({ Title = "AIM", Icon = "axe", Desc = "Auto lock to player" }),
+    TeleportTab = Window:Tab({ Title = "Teleport", Icon = "user", Desc = "Teleport to anything", Locked = true}),
+    SettingsTab = Window:Tab({ Title = "Settings", Icon = "battery", Desc = "Main settings" }),
     b = Window:Divider(),
     WindowTab = Window:Tab({ Title = "Window and File Configuration", Icon = "settings", Desc = "Manage window settings and file configurations." }),
     CreateThemeTab = Window:Tab({ Title = "Create Theme", Icon = "palette", Desc = "Design and apply custom themes." }),
 }
-
-Window:SelectTab(1)
-
 
 --[[ НАСТРОЙКИ ПЕРСОНАЖА ]]--
 local Players = game:GetService("Players")
@@ -126,7 +124,7 @@ local function updateCharacter()
     end
 end
 
-Tabs.Character:Slider({
+Tabs.CharacterTab:Slider({
     Title = "Walkspeed",
     Value = {Min = 0, Max = 200, Default = 16},
     Callback = function(value)
@@ -135,7 +133,7 @@ Tabs.Character:Slider({
     end
 })
 
-Tabs.Character:Button({
+Tabs.CharacterTab:Button({
     Title = "Reset walkspeed",
     Callback = function()
         CharacterSettings.WalkSpeed.Value = CharacterSettings.WalkSpeed.Default
@@ -143,7 +141,7 @@ Tabs.Character:Button({
     end
 })
 
-Tabs.Character:Toggle({
+Tabs.CharacterTab:Toggle({
     Title = "Block walkspeed",
     Default = false,
     Callback = function(state)
@@ -152,7 +150,7 @@ Tabs.Character:Toggle({
     end
 })
 
-Tabs.Character:Slider({
+Tabs.CharacterTab:Slider({
     Title = "Jumppower",
     Value = {Min = 0, Max = 200, Default = 50},
     Callback = function(value)
@@ -162,7 +160,7 @@ Tabs.Character:Slider({
 })
 
 
-Tabs.Character:Button({
+Tabs.CharacterTab:Button({
     Title = "Reset jumppower",
     Callback = function()
         CharacterSettings.JumpPower.Value = CharacterSettings.JumpPower.Default
@@ -170,7 +168,7 @@ Tabs.Character:Button({
     end
 })
 
-Tabs.Character:Toggle({
+Tabs.CharacterTab:Toggle({
     Title = "Block jumppower",
     Default = false,
     Callback = function(state)
@@ -195,7 +193,7 @@ local ESPSettings = {
 }
 
 -- Настройки ESP
-Tabs.ESP:Toggle({
+Tabs.EspTab:Toggle({
     Title = "Name ESP",
     Default = false,
     Callback = function(state) 
@@ -203,7 +201,7 @@ Tabs.ESP:Toggle({
     end
 })
 
-Tabs.ESP:Toggle({
+Tabs.EspTab:Toggle({
     Title = "Distance ESP",
     Default = false,
     Callback = function(state) 
@@ -211,7 +209,7 @@ Tabs.ESP:Toggle({
     end
 })
 
-Tabs.ESP:Toggle({
+Tabs.EspTab:Toggle({
     Title = "Highlight ESP",
     Default = false,
     Callback = function(state) 
@@ -219,7 +217,9 @@ Tabs.ESP:Toggle({
     end
 })
 
-Tabs.ESP:Colorpicker({
+Tabs.EspTab:Section({Title = "Settings ESP"})
+
+Tabs.EspTab:Colorpicker({
     Title = "Highlight color",
     Default = ESPSettings.Color,
     Callback = function(color)
@@ -227,7 +227,7 @@ Tabs.ESP:Colorpicker({
     end
 })
 
-Tabs.ESP:Input({
+Tabs.EspTab:Input({
     Title = "Highlight transparency",
     Default = 0.5,
     Callback = function(value)
@@ -235,7 +235,7 @@ Tabs.ESP:Input({
     end
 })
 
-Tabs.ESP:Colorpicker({
+Tabs.EspTab:Colorpicker({
     Title = "Esp text color",
     Default = ESPSettings.TextColor,
     Callback = function(color)
@@ -243,7 +243,7 @@ Tabs.ESP:Colorpicker({
     end
 })
 
-Tabs.ESP:Slider({
+Tabs.EspTab:Slider({
     Title = "Esp text size",
     Value = {Min = 12, Max = 24, Default = 18},
     Callback = function(value)
@@ -417,7 +417,7 @@ local function isValidTarget(player)
    end
 
 --[[ ОБНОВЛЕННЫЕ КОЛЛБЭКИ ]]--
-Tabs.Aimbot:Toggle({
+Tabs.AimbotTab:Toggle({
     Title = "Lock camera to player",
     Default = false,
     Callback = function(state)
@@ -644,12 +644,12 @@ Tabs.Settings:Toggle({
     Title = "Hixboxes",
     Callback = function(state)
         Settings.Hitbox.Enabled = state
-        if state then
+      if state then
             RunService.Heartbeat:Connect(UpdateHitboxes)
         else
             for _, box in pairs(Settings.Hitbox.Adornments) do
                 box:Destroy()
-   end
+            end
             Settings.Hitbox.Adornments = {}
         end
     end
