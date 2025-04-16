@@ -84,11 +84,11 @@ Window:EditOpenButton({
 })
 
 local Tabs = {
-    CharacterTab = Window:Tab({ Title = "Character", Icon = "file-cog", Desc = "Change character settings" }),
-    EspTab = Window:Tab({ Title = "ESP", Icon = "eye", Desc = "See more then default." }),
-    AimbotTab = Window:Tab({ Title = "AIM", Icon = "axe", Desc = "Auto lock to player" }),
-    TeleportTab = Window:Tab({ Title = "Teleport", Icon = "user", Desc = "Teleport to anything", Locked = true}),
-    SettingsTab = Window:Tab({ Title = "Settings", Icon = "battery", Desc = "Main settings" }),
+    CharacterTab = Window:Tab({ Title = "Character", Icon = "file-cog" }),
+    TeleportTab = Window:Tab({ Title = "Teleport", Icon = "user" }),
+    EspTab = Window:Tab({ Title = "ESP", Icon = "eye" }),
+    AimbotTab = Window:Tab({ Title = "Aimbot", Icon = "axe" }),
+    SettingsTab = Window:Tab({ Title = "Settings", Icon = "code" }),
     b = Window:Divider(),
     WindowTab = Window:Tab({ Title = "Window and File Configuration", Icon = "settings", Desc = "Manage window settings and file configurations." }),
     CreateThemeTab = Window:Tab({ Title = "Create Theme", Icon = "palette", Desc = "Design and apply custom themes." }),
@@ -114,13 +114,6 @@ local function updateCharacter()
         if not CharacterSettings.JumpPower.Locked then
             humanoid.JumpPower = CharacterSettings.JumpPower.Value
         end
-    else
-        WindUI:Notify({
-            Title = "Ошибка",
-            Content = "Humanoid не найден",
-            Icon = "alert",
-            Duration = 3
-        })
     end
 end
 
@@ -440,7 +433,7 @@ local function updatePlayerDropdown()
     return playersList
 end
 
-local dropdown = Tabs.Aimbot:Dropdown({
+local dropdown = Tabs.AimbotTab:Dropdown({
     Title = "Players to lock camera",
     Values = updatePlayerDropdown(),
     Value = "None",
@@ -468,7 +461,7 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 -- Кнопка принудительного обновления
-Tabs.Aimbot:Button({
+Tabs.AimbotTab:Button({
     Title = "Update peoples list",
     Callback = function()
         dropdown:Set("Values", updatePlayerDropdown())
@@ -622,17 +615,11 @@ local function ToggleAntiAFK(state)
                 Settings.AntiAFK.Connection:Disconnect()
             end
         end
-        WindUI:Notify({
-            Title = "Анти-AFK",
-            Content = state and "Активирован" or "Деактивирован",
-            Icon = "check-circle",
-            Duration = 2
-        })
 end
 
 -- Интерфейс
 
-Tabs.Settings:Toggle({
+Tabs.SettingsTab:Toggle({
     Title = "NoClip",
     Callback = function(state)
         Settings.Noclip.Enabled = state
@@ -640,11 +627,11 @@ Tabs.Settings:Toggle({
     end
 })
 
-Tabs.Settings:Toggle({
+Tabs.SettingsTab:Toggle({
     Title = "Hixboxes",
     Callback = function(state)
         Settings.Hitbox.Enabled = state
-      if state then
+        if state then
             RunService.Heartbeat:Connect(UpdateHitboxes)
         else
             for _, box in pairs(Settings.Hitbox.Adornments) do
@@ -655,7 +642,7 @@ Tabs.Settings:Toggle({
     end
 })
 
-Tabs.Settings:Slider({
+Tabs.SettingsTab:Slider({
     Title = "Hitbox size",
     Value = {Min=1, Max=10, Default=5},
     Callback = function(val)
@@ -664,7 +651,7 @@ Tabs.Settings:Slider({
     end
 })
 
-Tabs.Settings:Colorpicker({
+Tabs.SettingsTab:Colorpicker({
     Title = "Hitbox color",
     Default = Color3.new(1,0,0),
     Callback = function(col)
@@ -673,7 +660,7 @@ Tabs.Settings:Colorpicker({
     end
 })
 
-Tabs.Settings:Toggle({
+Tabs.SettingsTab:Toggle({
     Title = "Anti-AFK",
     Callback = function(state)
         Settings.AntiAFK.Enabled = state
