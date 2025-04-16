@@ -848,3 +848,9 @@ Tabs.CreateThemeTab:Colorpicker({
         ThemePlaceholderText = color -- Убрано :ToHex()
     end
 })
+Tabs.CreateThemeTab:Button({
+    Title = "Update Theme",
+    Callback = function()
+        updateTheme()
+    end
+})
