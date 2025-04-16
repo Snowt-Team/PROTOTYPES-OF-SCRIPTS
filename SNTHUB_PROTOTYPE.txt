@@ -851,6 +851,20 @@ Tabs.CreateThemeTab:Colorpicker({
 Tabs.CreateThemeTab:Button({
     Title = "Update Theme",
     Callback = function()
-        updateTheme()
+        WindUI:AddTheme({
+            Name = currentThemeName,
+            Accent = ThemeAccent,
+            Outline = ThemeOutline,
+            Text = ThemeText,
+            PlaceholderText = ThemePlaceholderText
+        })
+        WindUI:SetTheme(currentThemeName)
+        WindUI:Notify({
+            Title = "Тема обновлена",
+            Content = "Новая тема '"..currentThemeName.."' применена!",
+            Duration = 3,
+            Icon = "check-circle"
+        })
     end
 })
+
