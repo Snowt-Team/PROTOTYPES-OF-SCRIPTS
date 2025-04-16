@@ -103,7 +103,6 @@ local CharacterSettings = {
     JumpPower = {Value = 50, Default = 50, Locked = false}
 }
 
--- 1. Уберите обертку SafeCall из updateCharacter
 local function updateCharacter()
     local character = LocalPlayer.Character
     if not character then 
@@ -134,15 +133,12 @@ local function updateCharacter()
     end
 end
 
--- 2. Обновите колбэки слайдеров/кнопок, добавив SafeCall
 Tabs.Character:Slider({
     Title = "Скорость передвижения",
     Value = {Min = 0, Max = 200, Default = 16},
     Callback = function(value)
-        SafeCall(function()
-            CharacterSettings.WalkSpeed.Value = value
-            updateCharacter()
-        end)
+        CharacterSettings.WalkSpeed.Value = value
+        updateCharacter()
     end
 })
 
@@ -167,12 +163,11 @@ Tabs.Character:Slider({
     Title = "Сила прыжка",
     Value = {Min = 0, Max = 200, Default = 50},
     Callback = function(value)
-        SafeCall(function()
-            CharacterSettings.JumpPower.Value = value
-            updateCharacter()
-        end)
+        CharacterSettings.JumpPower.Value = value
+        updateCharacter()
     end
 })
+
 
 Tabs.Character:Button({
     Title = "Сброс прыжка",
@@ -653,7 +648,7 @@ local function UpdateHitboxes()
                             box.Size = Vector3.new(Settings.Hitbox.Size, Settings.Hitbox.Size, Settings.Hitbox.Size)
                             box.Color3 = Settings.Hitbox.Color
                         end
- end
+                    end
                 elseif box then
                     box:Destroy()
                     Settings.Hitbox.Adornments[plr] = nil
@@ -749,13 +744,20 @@ end)
 local HttpService = game:GetService("HttpService")
 
 local folderPath = "WindUI"
+if not isfolder(folderPath) then
+    pcall(function()
+        makefolder(folderPath)
+    end)
+end
 makefolder(folderPath)
 
 local themeValues = {}
-for name, _ in pairs(WindUI:GetThemes()) do
-    table.insert(themeValues, name)
+local themes = WindUI:GetThemes()
+if themes then
+    for name, _ in pairs(themes) do
+        table.insert(themeValues, name)
+    end
 end
-
 
 local themeDropdown = Tabs.SettingsUI:Dropdown({
     Title = "Выбери тему",
@@ -767,7 +769,10 @@ local themeDropdown = Tabs.SettingsUI:Dropdown({
         WindUI:SetTheme(theme)
     end
 })
-themeDropdown:Select(WindUI:GetCurrentTheme())
+
+if WindUI:GetCurrentTheme() then
+    themeDropdown:Select(WindUI:GetCurrentTheme())
+end
 
 local ToggleTransparency = Tabs.SettingsUI:Toggle({
     Title = "Прозрачность интерфейса",
@@ -860,14 +865,17 @@ end
 
 local function ListFiles()
     local files = {}
-    for _, file in ipairs(listfiles(folderPath)) do
-        local fileName = file:match("([^/]+)%.json$")
-        if fileName then
-            table.insert(files, fileName)
+    if isfolder(folderPath) then
+        for _, file in ipairs(listfiles(folderPath)) do
+            local fileName = file:match("([^/]+)%.json$")
+            if fileName then
+                table.insert(files, fileName)
+            end
         end
     end
     return files
 end
+
 
 local fileNameInput = ""
 Tabs.FileSet:Input({
@@ -906,16 +914,14 @@ Tabs.FileSet:Button({
         if fileNameInput ~= "" then
             local data = LoadFile(fileNameInput)
             if data then
-                WindUI:Notify({
-                    Title = "File Loaded",
-                    Content = "Loaded data: " .. HttpService:JSONEncode(data),
-                    Duration = 5,
-                })
-                if data.Transparent then 
+                if data.Transparent ~= nil then 
                     Window:ToggleTransparency(data.Transparent)
                     ToggleTransparency:SetValue(data.Transparent)
                 end
-                if data.Theme then WindUI:SetTheme(data.Theme) end
+                if data.Theme then 
+                    WindUI:SetTheme(data.Theme)
+                    themeDropdown:Select(data.Theme)
+                end
             end
         end
     end
@@ -936,4 +942,3 @@ Tabs.FileSet:Button({
         filesDropdown:Refresh(ListFiles())
     end
 })
-
