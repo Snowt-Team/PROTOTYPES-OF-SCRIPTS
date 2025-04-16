@@ -389,41 +389,13 @@ Players.PlayerRemoving:Connect(function()
     teleportDropdown:Set("Values", updateTeleportPlayers())
 end)
 
-
---[[ ОБНОВЛЕННАЯ СИСТЕМА АИМБОТА ]]--
+--[[ ОБНОВЛЕННАЯ СИСТЕМА УПРАВЛЕНИЯ ]]--
 local isShiftLock = false
-local lastBodyGyro = nil
-local lockRadius = 100
-local cameraRotationSpeed = 0.2
 local isCameraLocked = false
 local lockedPlayer = nil
+local lastBodyGyro = nil
 
--- Функция проверки валидности цели
-local function isValidTarget(player)
-    return player and player.Character 
-        and player.Character:FindFirstChild("Humanoid")
-        and player.Character.Humanoid.Health > 0
-        and player.Character:FindFirstChild("HumanoidRootPart")
-end
-
--- Функция поворота персонажа
-local function rotateCharacterToTarget(targetPart)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local root = LocalPlayer.Character.HumanoidRootPart
-        
-        if lastBodyGyro then
-            lastBodyGyro:Destroy()
-        end
-
-        lastBodyGyro = Instance.new("BodyGyro")
-        lastBodyGyro.MaxTorque = Vector3.new(0, 9e9, 0)
-        lastBodyGyro.P = 1200
-        lastBodyGyro.CFrame = CFrame.new(root.Position, targetPart.Position)
-        lastBodyGyro.Parent = root
-    end
-end
-
--- Обновленный дропдаун
+-- Функция обновления дропдауна
 local function updatePlayerDropdown()
     local playersList = {"None"}
     for _, player in Players:GetPlayers() do
@@ -434,8 +406,9 @@ local function updatePlayerDropdown()
     return playersList
 end
 
+-- Создание элементов интерфейса
 local dropdown = Tabs.AimbotTab:Dropdown({
-    Title = "Players to lock camera",
+    Title = "Players to target",
     Values = updatePlayerDropdown(),
     Value = "None",
     Callback = function(selected)
@@ -443,62 +416,15 @@ local dropdown = Tabs.AimbotTab:Dropdown({
     end
 })
 
--- Функция поиска ближайшего игрока
-local function getNearestPlayer(radius)
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then 
-        return nil 
+Tabs.AimbotTab:Button({
+    Title = "Refresh list",
+    Callback = function()
+        dropdown:Set("Values", updatePlayerDropdown())
     end
-    
-    local nearestPlayer = nil
-    local minDistance = math.huge
-    local localPosition = LocalPlayer.Character.HumanoidRootPart.Position
+})
 
-    for _, player in Players:GetPlayers() do
-        if player ~= LocalPlayer and isValidTarget(player) then
-            local targetPosition = player.Character.HumanoidRootPart.Position
-            local distance = (localPosition - targetPosition).Magnitude
-            
-            if distance <= radius and distance < minDistance then
-                minDistance = distance
-                nearestPlayer = player
-            end
-        end
-    end
-    
-    return nearestPlayer
-end
-
--- Основной цикл
-RunService.RenderStepped:Connect(function()
-    if isCameraLocked then
-        local target = lockedPlayer or getNearestPlayer(lockRadius)
-        
-        if target and isValidTarget(target) then
-            local rootPart = target.Character.HumanoidRootPart
-            
-            -- Поворот камеры
-            camera.CFrame = camera.CFrame:Lerp(
-                CFrame.lookAt(camera.CFrame.Position, rootPart.Position),
-                cameraRotationSpeed
-            )
-            
-            -- Поворот персонажа
-            if isShiftLock then
-                rotateCharacterToTarget(rootPart)
-            end
-            
-            targetIndicator.Adornee = rootPart
-            targetIndicator.Enabled = true
-        else
-            targetIndicator.Enabled = false
-            camera.CameraType = Enum.CameraType.Custom
-        end
-    end
-end)
-
--- Кнопки управления
 Tabs.AimbotTab:Toggle({
-    Title = "Lock camera to player",
+    Title = "Lock camera to target plr",
     Default = false,
     Callback = function(state)
         isCameraLocked = state
@@ -507,7 +433,7 @@ Tabs.AimbotTab:Toggle({
 })
 
 Tabs.AimbotTab:Toggle({
-    Title = "ShiftLock Rotation",
+    Title = "Character rotate",
     Default = false,
     Callback = function(state)
         isShiftLock = state
@@ -517,45 +443,46 @@ Tabs.AimbotTab:Toggle({
     end
 })
 
--- Система обновления списка
-local function refreshPlayerList()
-    dropdown:Set("Values", updatePlayerDropdown())
-end
+Tabs.AimbotTab:Section({Title = "Aim settings"})
 
-Tabs.AimbotTab:Button({
-    Title = "🔄 Refresh Player List",
-    Callback = refreshPlayerList
+Tabs.AimbotTab:Input({
+    Title = "Smoothness (min 0.1, max 1)",
+    Default = 0.85,
+    Callback = function(value)
+        smoothRotation = value
+    end
 })
 
--- Автоматическое обновление
+
+Tabs.AimbotTab:Input({
+    Title = "Camera Speed (min 0.01, max 0.5)",
+    Default = 0.1,
+    Callback = function(value)
+        cameraRotationSpeed = value
+    end
+})
+
+-- Система отслеживания игроков
 local function trackPlayer(player)
     if player.Character then
-        player.Character.Humanoid.Died:Connect(refreshPlayerList)
+        player.Character.Humanoid.Died:Connect(function()
+            dropdown:Set("Values", updatePlayerDropdown())
+        end)
         player.CharacterAdded:Connect(function()
-            player.Character:WaitForChild("Humanoid").Died:Connect(refreshPlayerList)
-            refreshPlayerList()
+            dropdown:Set("Values", updatePlayerDropdown())
         end)
     end
 end
 
-Players.PlayerAdded:Connect(function(player)
-    trackPlayer(player)
-    refreshPlayerList()
-end)
-
+Players.PlayerAdded:Connect(trackPlayer)
 Players.PlayerRemoving:Connect(function(player)
-    if player == lockedPlayer then
-        lockedPlayer = nil
-    end
-    refreshPlayerList()
+    dropdown:Set("Values", updatePlayerDropdown())
 end)
 
--- Инициализация для существующих игроков
 for _, player in Players:GetPlayers() do
-    if player ~= LocalPlayer then
-        trackPlayer(player)
-    end
+    trackPlayer(player)
 end
+
 
 local Settings = {
     Hitbox = {
