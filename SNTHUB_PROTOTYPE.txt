@@ -651,7 +651,6 @@ local function ToggleAntiAFK(state)
                     vu:ClickButton2(Vector2.new())
                 end)
             end)
-
 else
             if Settings.AntiAFK.Connection then
                 Settings.AntiAFK.Connection:Disconnect()
@@ -734,6 +733,7 @@ if not isfolder(folderPath) then
 end
 makefolder(folderPath)
 
+SafeCall(function()
 local themeValues = {}
 local themes = WindUI:GetThemes() or { Default = { 
     Accent = Color3.fromHex("#FFFFFF"), 
@@ -741,6 +741,7 @@ local themes = WindUI:GetThemes() or { Default = {
     Text = Color3.fromHex("#FFFFFF"), 
     PlaceholderText = Color3.fromHex("#808080")
 }}
+end)
 
 for name, _ in pairs(themes) do
     table.insert(themeValues, name)
@@ -792,7 +793,6 @@ local ToggleTransparency = Tabs.SettingsUI:Toggle({
     end
 })
 
-
 local CreateInput = Tabs.SettingsUI:Input({
     Title = "Название темы",
     Value = currentThemeName,
@@ -803,9 +803,9 @@ local CreateInput = Tabs.SettingsUI:Input({
 
 Tabs.SettingsUI:Colorpicker({
     Title = "Цвет фона",
-    Default = Color3.fromHex(ThemeAccent),
+    Default = ThemeAccent, -- Убрано fromHex
     Callback = function(color)
-        ThemeAccent = color:ToHex()
+        ThemeAccent = color -- Сохраняем Color3, а не HEX
     end
 })
 
