@@ -390,215 +390,186 @@ Players.PlayerRemoving:Connect(function()
 end)
 
 
---[[ АИМБОТ СИСТЕМА ]]--
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
+--[[ ОБНОВЛЕННАЯ СИСТЕМА АИМБОТА ]]--
+local isShiftLock = false
+local lastBodyGyro = nil
 
-local localPlayer = Players.LocalPlayer
-local isCameraLocked = false
-local lockedPlayer = nil
-local defaultCameraType = Enum.CameraType.Custom
-local lockRadius = 100
-local cameraRotationSpeed = 0.1
-
-local targetIndicator = Instance.new("BillboardGui")
-targetIndicator.Size = UDim2.new(2, 0, 1, 0)
-targetIndicator.AlwaysOnTop = true
-targetIndicator.Enabled = false
-
-local arrow = Instance.new("ImageLabel")
-arrow.Size = UDim2.new(1, 0, 1, 0)
-arrow.BackgroundTransparency = 1
-arrow.Image = "rbxassetid://602361387"
-arrow.ImageColor3 = Color3.new(1, 1, 0)
-arrow.Position = UDim2.new(0.5, 0, -1.5, 0)
-arrow.AnchorPoint = Vector2.new(0.5, 0.5)
-arrow.Parent = targetIndicator
-targetIndicator.Parent = Workspace
-
-local function getNearestPlayer(radius)
-    if not LocalPlayer.Character 
-        or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") 
-    then 
-        return nil 
-    end
-    
-    local nearestPlayer = nil
-    local minDistance = math.huge
-    local localPosition = LocalPlayer.Character.HumanoidRootPart.Position
-
-    for _, player in Players:GetPlayers() do
-        if player ~= LocalPlayer 
-            and player.Character 
-            and player.Character:FindFirstChild("HumanoidRootPart") 
-        then
-            local targetPosition = player.Character.HumanoidRootPart.Position
-            local distance = (localPosition - targetPosition).Magnitude
-            
-            if distance <= radius and distance < minDistance then
-                minDistance = distance
-                nearestPlayer = player
-            end
-        end
-    end
-    
-    return nearestPlayer
-end
-
-local camera = workspace.CurrentCamera
-
- local function updateCameraLookAt()
-        if isCameraLocked then
-            -- Проверка на валидность lockedPlayer
-            if not (lockedPlayer and isValidTarget(lockedPlayer)) then
-                lockedPlayer = getNearestPlayer(lockRadius)
-            end
-
-            if lockedPlayer and isValidTarget(lockedPlayer) then
-                local targetPart = lockedPlayer.Character and lockedPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if targetPart then
-                    camera.CameraType = Enum.CameraType.Scriptable
-                    local newCFrame = CFrame.lookAt(camera.CFrame.Position, targetPart.Position)
-                    camera.CFrame = camera.CFrame:Lerp(newCFrame, cameraRotationSpeed)
-                    targetIndicator.Adornee = targetPart
-                    targetIndicator.Enabled = true
-                else
-                    camera.CameraType = defaultCameraType
-                    targetIndicator.Enabled = false
-                end
-            else
-                camera.CameraType = defaultCameraType
-                targetIndicator.Enabled = false
-            end
-        end
-end
-
-
+-- Обновленная функция проверки цели
 local function isValidTarget(player)
-       return player and player.Character and player.Character.Parent ~= nil 
-           and player.Character:FindFirstChild("Humanoid") 
-           and player.Character.Humanoid.Health > 0
-   end
+    return player and player.Character and player.Character.Parent ~= nil 
+        and player.Character:FindFirstChild("Humanoid") 
+        and player.Character.Humanoid.Health > 0
+        and player.Character:FindFirstChild("HumanoidRootPart")
+end
 
---[[ ОБНОВЛЕННЫЕ КОЛЛБЭКИ ]]--
-Tabs.AimbotTab:Toggle({
-    Title = "Lock camera to player",
-    Default = false,
-    Callback = function(state)
-        isCameraLocked = state
-        if state then
-            lockedPlayer = getNearestPlayer(lockRadius) -- Инициализация при включении
-            RunService.RenderStepped:Connect(updateCameraLookAt)
+-- Функция поворота персонажа
+local function rotateCharacterToTarget(targetPart)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local root = LocalPlayer.Character.HumanoidRootPart
+        
+        -- Удаляем предыдущий гироскоп
+        if lastBodyGyro then
+            lastBodyGyro:Destroy()
+            lastBodyGyro = nil
         end
+
+        -- Создаем новый BodyGyro
+        lastBodyGyro = Instance.new("BodyGyro")
+        lastBodyGyro.MaxTorque = Vector3.new(0, 9e9, 0)
+        lastBodyGyro.P = 1200
+        lastBodyGyro.CFrame = CFrame.new(root.Position, targetPart.Position)
+        lastBodyGyro.Parent = root
     end
-})
+end
 
-
+-- Обновленная функция обновления списка игроков
 local function updatePlayerDropdown()
     local playersList = {"None"}
     for _, player in Players:GetPlayers() do
-        if player ~= LocalPlayer then
+        if player ~= LocalPlayer and isValidTarget(player) then
             table.insert(playersList, player.Name)
         end
     end
     return playersList
 end
 
+-- Обновленный обработчик RenderStepped
+RunService.RenderStepped:Connect(function()
+    if isCameraLocked and isShiftLock then
+        local target = lockedPlayer or getNearestPlayer(lockRadius)
+        
+        if target and isValidTarget(target) then
+            local rootPart = target.Character.HumanoidRootPart
+            rotateCharacterToTarget(rootPart) -- Поворот персонажа
+            
+            -- Обновление камеры
+            camera.CFrame = camera.CFrame:Lerp(
+                CFrame.lookAt(camera.CFrame.Position, rootPart.Position),
+                cameraRotationSpeed
+            )
+            targetIndicator.Adornee = rootPart
+            targetIndicator.Enabled = true
+            return
+        end
+        
+        targetIndicator.Enabled = false
+        camera.CameraType = Enum.CameraType.Custom
+    end
+end)
+
+-- Обновленный интерфейс
+Tabs.AimbotTab:Toggle({
+    Title = "ShiftLock Rotation",
+    Default = false,
+    Callback = function(state)
+        isShiftLock = state
+        if not state and lastBodyGyro then
+            lastBodyGyro:Destroy()
+            lastBodyGyro = nil
+        end
+    end
+})
+
+--[[ ОБНОВЛЕННЫЙ ДРОПДАУН И КНОПКА ]]--
+local function updatePlayerDropdown()
+    local playersList = {"None"}
+    for _, player in Players:GetPlayers() do
+        -- Фильтрация: только живые и валидные игроки
+        if player ~= LocalPlayer and isValidTarget(player) then
+            table.insert(playersList, player.Name)
+        end
+    end
+    return playersList
+end
+
+-- Создание дропдауна с актуальными данными
 local dropdown = Tabs.AimbotTab:Dropdown({
-    Title = "Players to lock camera",
+    Title = "Select Target Player",
     Values = updatePlayerDropdown(),
     Value = "None",
     Callback = function(selected)
         lockedPlayer = (selected ~= "None") and Players:FindFirstChild(selected) or nil
-        if isCameraLocked and lockedPlayer then
-            targetIndicator.Enabled = true
-        end
     end
 })
-
--- Автоматическое обновление списка игроков
-Players.PlayerAdded:Connect(function()
-    dropdown:Set("Values", updatePlayerDropdown())
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    dropdown:Set("Values", updatePlayerDropdown())
-    if player == lockedPlayer then
-        lockedPlayer = nil
-        if isCameraLocked then
-            lockedPlayer = getNearestPlayer(lockRadius)
-        end
-    end
-end)
 
 -- Кнопка принудительного обновления
 Tabs.AimbotTab:Button({
-    Title = "Update peoples list",
+    Title = "Refresh Player List",
     Callback = function()
         dropdown:Set("Values", updatePlayerDropdown())
+        WindUI:Notify({
+            Title = "Список обновлён",
+            Content = "Актуальные цели загружены",
+            Duration = 2,
+            Icon = "refresh-ccw"
+        })
     end
 })
 
--- Автоматическое обновление при подключении/отключении игроков
-Players.PlayerAdded:Connect(function(player)
-    dropdown:Set("Values", updatePlayerDropdown())
-end)
+local function refreshEvents()
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            dropdown:Set("Values", updatePlayerDropdown())
+        end)
+        dropdown:Set("Values", updatePlayerDropdown())
+    end)
 
-Players.PlayerRemoving:Connect(function(player)
+    Players.PlayerRemoving:Connect(function()
+        dropdown:Set("Values", updatePlayerDropdown())
+    end)
+
+    for _, player in Players:GetPlayers() do
+        if player ~= LocalPlayer and player.Character then
+            player.Character:WaitForChild("Humanoid").Died:Connect(function()
+                dropdown:Set("Values", updatePlayerDropdown())
+            end)
+            player.CharacterAdded:Connect(function()
+                dropdown:Set("Values", updatePlayerDropdown())
+            end)
+        end
+    end
+end
+
+-- Инициализация системы отслеживания
+refreshEvents()
+
+
+-- Автоматическая очистка списка
+local function cleanDeadPlayers()
     dropdown:Set("Values", updatePlayerDropdown())
     
-    -- Если текущая цель вышла из игры
+    -- Сброс цели если игрок умер/вышел
+    if lockedPlayer and not isValidTarget(lockedPlayer) then
+        lockedPlayer = getNearestPlayer(lockRadius)
+    end
+end
+
+-- Отслеживание смерти игроков
+local function trackPlayerHealth(player)
+    if player.Character then
+        player.Character:WaitForChild("Humanoid").Died:Connect(cleanDeadPlayers)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        trackPlayerHealth(player)
+        cleanDeadPlayers()
+    end)
+end)
+
+-- Инициализация для существующих игроков
+for _, player in Players:GetPlayers() do
+    if player ~= LocalPlayer then
+        trackPlayerHealth(player)
+    end
+end
+
+-- Обновленные обработчики
+Players.PlayerRemoving:Connect(function(player)
+    cleanDeadPlayers()
     if player == lockedPlayer then
         lockedPlayer = getNearestPlayer(lockRadius)
-        if isCameraLocked and lockedPlayer then
-            targetIndicator.Adornee = lockedPlayer.Character.HumanoidRootPart
-        end
-    end
-end)
-
--- Индикатор выбранной цели
-targetIndicator.Enabled = false
-targetIndicator.Size = UDim2.new(3, 0, 3, 0)
-
-local triangle = Instance.new("ImageLabel")
-triangle.Image = "rbxassetid://4925116997" -- Красный треугольник
-triangle.Size = UDim2.new(1, 0, 1, 0)
-triangle.Parent = targetIndicator
-
--- Обновление фокуса в основном цикле
-RunService.RenderStepped:Connect(function()
-    if isCameraLocked then
-        -- Приоритет ручного выбора
-        local target = lockedPlayer or getNearestPlayer(lockRadius)
-        
-        if target and target.Character then
-            local rootPart = target.Character:FindFirstChild("HumanoidRootPart")
-            if rootPart then
-                -- Плавное перемещение камеры
-                camera.CFrame = camera.CFrame:Lerp(
-                    CFrame.lookAt(camera.CFrame.Position, rootPart.Position),
-                    cameraRotationSpeed
-                )
-                
-                -- Обновление индикатора
-                targetIndicator.Adornee = rootPart
-                targetIndicator.Enabled = true
-                return
-            end
-        end
-        
-        -- Сброс при отсутствии целей
-        targetIndicator.Enabled = false
-        camera.CameraType = Enum.CameraType.Custom
-    end
-end)
-
--- Защита от ошибок при уничтожении персонажа
-LocalPlayer.CharacterRemoving:Connect(function()
-    if isCameraLocked then
-        camera.CameraType = Enum.CameraType.Custom
-        targetIndicator.Enabled = false
     end
 end)
 
@@ -654,7 +625,7 @@ local function UpdateHitboxes()
                             box = Instance.new("BoxHandleAdornment")
                             box.Adornee = root
                             box.Size = Vector3.new(Settings.Hitbox.Size, Settings.Hitbox.Size, Settings.Hitbox.Size)
-box.Color3 = Settings.Hitbox.Color
+                            box.Color3 = Settings.Hitbox.Color
                             box.Transparency = 0.4
                             box.ZIndex = 10
                             box.Parent = root
@@ -695,7 +666,7 @@ Tabs.SettingsTab:Toggle({
     Title = "NoClip",
     Callback = function(state)
         Settings.Noclip.Enabled = state
-        ToggleNoclip(state)
+ToggleNoclip(state)
     end
 })
 
