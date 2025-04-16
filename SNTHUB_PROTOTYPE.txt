@@ -4,7 +4,6 @@ if not WindUI then
     return
 end
 
--- FIXED 1: Добавьте проверку на загрузку игры и игрока
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 LocalPlayer:WaitForChild("PlayerGui")
@@ -64,7 +63,7 @@ WindUI:Popup({
     }
 })
 
-repeat task.wait() until Confirmed
+repeat wait() until Confirmed
 
 WindUI:Notify({
     Title = "SNT HUB",
@@ -76,19 +75,20 @@ WindUI:Notify({
 
 
 local Window = WindUI:CreateWindow({
-    Title = "Универсальный ESP/AIMBOT | SNT HUB",
+    Title = "[Prototype] Universal | SNT Hub [v1.1]",
     Icon = "eye",
     Author = "SnOwT",
     Folder = "SNT Hub",
     Size = UDim2.fromOffset(340, 320),
     Transparent = true,
-    Theme = "Nord",
+    Theme = "Black",
     SideBarWidth = 200,
+    UserEnabled = true,
     HasOutline = true,
     KeySystem = {
-        Key = { "SnowtTest", "SnowtRelease" },
+        Key = { "Update1.1", "Test"},
         Note = "Введите ключ.",
-        URL = "t.me/supreme_sigma",
+        URL = "t.me/supreme_scripts",
         SaveKey = false,
     },
 })
@@ -99,8 +99,8 @@ Window:EditOpenButton({
     CornerRadius = UDim.new(0, 6),
     StrokeThickness = 2,
     Color = ColorSequence.new(
-        Color3.fromHex("FF0F7B"),
-        Color3.fromHex("F89B29")
+        Color3.fromHex("1E213D"),
+        Color3.fromHex("1F75FE")
     ),
     Draggable = true,
 })
@@ -110,8 +110,13 @@ local Tabs = {
     ESP = Window:Tab({ Title = "ESP", Icon = "eye", Desc = "Визуальные модификации" }),
     Aimbot = Window:Tab({ Title = "Аимбот", Icon = "axe", Desc = "Автонаводка на врагов" }),
     Settings = Window:Tab({ Title = "Настройки", Icon = "battery", Desc = "Общие настройки" }),
-    SettUI = Window:Tab({ Title = "Настройки UI", Icon = "cog", Desc = "Различные настройки UI."})
+    b = Window:Divider(),
+    WindowTab = Window:Tab({ Title = "Window and File Configuration", Icon = "settings", Desc = "Manage window settings and file configurations." }),
+    CreateThemeTab = Window:Tab({ Title = "Create Theme", Icon = "palette", Desc = "Design and apply custom themes." }),
 }
+
+Window:SelectTab(1)
+
 
 --[[ НАСТРОЙКИ ПЕРСОНАЖА ]]--
 local Players = game:GetService("Players")
@@ -470,7 +475,7 @@ local function updatePlayerDropdown()
 end
 
 local dropdown = Tabs.Aimbot:Dropdown({
-    Title = "Ручной выбор цели",
+    Title = "Players to lock camera",
     Values = updatePlayerDropdown(),
     Value = "None",
     Callback = function(selected)
@@ -498,7 +503,7 @@ end)
 
 -- Кнопка принудительного обновления
 Tabs.Aimbot:Button({
-    Title = "Обновить список целей",
+    Title = "Update peoples list",
     Callback = function()
         dropdown:Set("Values", updatePlayerDropdown())
     end
@@ -648,7 +653,7 @@ end
 
 -- Анти-AFK
 local function ToggleAntiAFK(state)
-    SafeCall(function()
+   SafeCall(function()
         if state then
             Settings.AntiAFK.Connection = RunService.Heartbeat:Connect(function()
                 pcall(function()
@@ -674,7 +679,7 @@ end
 -- Интерфейс
 
 Tabs.Settings:Toggle({
-    Title = "Ноклип",
+    Title = "NoClip",
     Callback = function(state)
         Settings.Noclip.Enabled = state
         ToggleNoclip(state)
@@ -682,7 +687,7 @@ Tabs.Settings:Toggle({
 })
 
 Tabs.Settings:Toggle({
-    Title = "Хитбоксы",
+    Title = "Hixboxes",
     Callback = function(state)
         Settings.Hitbox.Enabled = state
         if state then
@@ -697,7 +702,7 @@ Tabs.Settings:Toggle({
 })
 
 Tabs.Settings:Slider({
-    Title = "Размер хитбокса",
+    Title = "Hitbox size",
     Value = {Min=1, Max=10, Default=5},
     Callback = function(val)
         Settings.Hitbox.Size = val
@@ -706,7 +711,7 @@ Tabs.Settings:Slider({
 })
 
 Tabs.Settings:Colorpicker({
-    Title = "Цвет хитбокса",
+    Title = "Hitbox color",
     Default = Color3.new(1,0,0),
     Callback = function(col)
         Settings.Hitbox.Color = col
@@ -715,7 +720,7 @@ Tabs.Settings:Colorpicker({
 })
 
 Tabs.Settings:Toggle({
-    Title = "Анти-AFK",
+    Title = "Anti-AFK",
     Callback = function(state)
         Settings.AntiAFK.Enabled = state
         ToggleAntiAFK(state)
@@ -730,12 +735,10 @@ game:BindToClose(function()
 end)
 
 -- UI настройки
-
 local HttpService = game:GetService("HttpService")
 
 local folderPath = "WindUI"
-if not isfolder(folderPath) then 
-    makefolder(folderPath) end
+makefolder(folderPath)
 
 local function SaveFile(fileName, data)
     local filePath = folderPath .. "/" .. fileName .. ".json"
@@ -762,12 +765,15 @@ local function ListFiles()
     return files
 end
 
-Tabs.SettUI:Section({ Title = "Окно" })
+Tabs.WindowTab:Section({ Title = "Window" })
 
-local themeValues = {"Black", "Dark", "Light", "Nord"}
+local themeValues = {}
+for name, _ in pairs(WindUI:GetThemes()) do
+    table.insert(themeValues, name)
+end
 
-local themeDropdown = Tabs.SettUI:Dropdown({
-    Title = "Выбери тему",
+local themeDropdown = Tabs.WindowTab:Dropdown({
+    Title = "Select Theme",
     Multi = false,
     AllowNone = false,
     Value = nil,
@@ -776,35 +782,29 @@ local themeDropdown = Tabs.SettUI:Dropdown({
         WindUI:SetTheme(theme)
     end
 })
-
 themeDropdown:Select(WindUI:GetCurrentTheme())
 
-local ToggleTransparency = Tabs.SettUI:Toggle({
-    Title = "Прозрачность UI",
+local ToggleTransparency = Tabs.WindowTab:Toggle({
+    Title = "Toggle Window Transparency",
     Callback = function(e)
         Window:ToggleTransparency(e)
     end,
     Value = WindUI:GetTransparency()
 })
 
-
-if WindUI:GetCurrentTheme() then
-    themeDropdown:Select(WindUI:GetCurrentTheme())
-end
-
-Tabs.SettUI:Section({ Title = "Сохранение"})
+Tabs.WindowTab:Section({ Title = "Save" })
 
 local fileNameInput = ""
-Tabs.SettUI:Input({
-    Title = "Введи название файла",
+Tabs.WindowTab:Input({
+    Title = "Write File Name",
     PlaceholderText = "Enter file name",
     Callback = function(text)
         fileNameInput = text
     end
 })
 
-Tabs.SettUI:Button({
-    Title = "Сохранить файл",
+Tabs.WindowTab:Button({
+    Title = "Save File",
     Callback = function()
         if fileNameInput ~= "" then
             SaveFile(fileNameInput, { Transparent = WindUI:GetTransparency(), Theme = WindUI:GetCurrentTheme() })
@@ -812,12 +812,12 @@ Tabs.SettUI:Button({
     end
 })
 
-Tabs.SettUI:Section({ Title = "Загрузка" })
+Tabs.WindowTab:Section({ Title = "Load" })
 
 local filesDropdown
 local files = ListFiles()
 
-filesDropdown = Tabs.SettUI:Dropdown({
+filesDropdown = Tabs.WindowTab:Dropdown({
     Title = "Select File",
     Multi = false,
     AllowNone = true,
@@ -827,8 +827,8 @@ filesDropdown = Tabs.SettUI:Dropdown({
     end
 })
 
-Tabs.SettUI:Button({
-    Title = "Загрузить файл",
+Tabs.WindowTab:Button({
+    Title = "Load File",
     Callback = function()
         if fileNameInput ~= "" then
             local data = LoadFile(fileNameInput)
@@ -848,8 +848,8 @@ Tabs.SettUI:Button({
     end
 })
 
-Tabs.SettUI:Button({
-    Title = "Перезаписать файл",
+Tabs.WindowTab:Button({
+    Title = "Overwrite File",
     Callback = function()
         if fileNameInput ~= "" then
             SaveFile(fileNameInput, { Transparent = WindUI:GetTransparency(), Theme = WindUI:GetCurrentTheme() })
@@ -857,8 +857,8 @@ Tabs.SettUI:Button({
     end
 })
 
-Tabs.SettUI:Button({
-    Title = "Обновить список",
+Tabs.WindowTab:Button({
+    Title = "Refresh List",
     Callback = function()
         filesDropdown:Refresh(ListFiles())
     end
@@ -883,49 +883,48 @@ function updateTheme()
     WindUI:SetTheme(currentThemeName)
 end
 
-local CreateInput = Tabs.SettUI:Input({
-    Title = "Название темы",
+local CreateInput = Tabs.CreateThemeTab:Input({
+    Title = "Theme Name",
     Value = currentThemeName,
     Callback = function(name)
         currentThemeName = name
     end
 })
 
-Tabs.SettUI:Colorpicker({
-    Title = "Цвет фона",
+Tabs.CreateThemeTab:Colorpicker({
+    Title = "Background Color",
     Default = Color3.fromHex(ThemeAccent),
     Callback = function(color)
         ThemeAccent = color:ToHex()
     end
 })
 
-
-Tabs.SettUI:Colorpicker({
-    Title = "Цвет границ UI",
+Tabs.CreateThemeTab:Colorpicker({
+    Title = "Outline Color",
     Default = Color3.fromHex(ThemeOutline),
     Callback = function(color)
         ThemeOutline = color:ToHex()
     end
 })
 
-Tabs.SettUI:Colorpicker({
-    Title = "Цвет текста",
+Tabs.CreateThemeTab:Colorpicker({
+    Title = "Text Color",
     Default = Color3.fromHex(ThemeText),
     Callback = function(color)
         ThemeText = color:ToHex()
     end
 })
 
-Tabs.SettUI:Colorpicker({
-    Title = "Цвет заполнителя текста",
+Tabs.CreateThemeTab:Colorpicker({
+    Title = "Placeholder Text Color",
     Default = Color3.fromHex(ThemePlaceholderText),
     Callback = function(color)
         ThemePlaceholderText = color:ToHex()
     end
 })
 
-Tabs.SettUI:Button({
-    Title = "Обновить тему",
+Tabs.CreateThemeTab:Button({
+    Title = "Update theme",
     Callback = function()
         updateTheme()
     end
