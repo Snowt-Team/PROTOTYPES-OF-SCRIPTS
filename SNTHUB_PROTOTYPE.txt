@@ -443,25 +443,6 @@ Tabs.AimbotTab:Toggle({
     end
 })
 
-Tabs.AimbotTab:Section({Title = "Aim settings"})
-
-Tabs.AimbotTab:Input({
-    Title = "Smoothness (min 0.1, max 1)",
-    Default = 0.85,
-    Callback = function(value)
-        smoothRotation = value
-    end
-})
-
-
-Tabs.AimbotTab:Input({
-    Title = "Camera Speed (min 0.01, max 0.5)",
-    Default = 0.1,
-    Callback = function(value)
-        cameraRotationSpeed = value
-    end
-})
-
 -- Система отслеживания игроков
 local function trackPlayer(player)
     if player.Character then
