@@ -317,6 +317,78 @@ Players.PlayerRemoving:Connect(function(player)
         textLabels[player] = nil
     end
 end)
+-- [[ TELEPORT СИСТЕМА ]] --
+local teleportTarget = nil
+
+-- Функция обновления списка игроков
+local function updateTeleportPlayers()
+    local playersList = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(playersList, player.Name)
+        end
+    end
+    return playersList
+end
+
+-- Создаем дропдаун для выбора игроков
+local teleportDropdown = Tabs.TeleportTab:Dropdown({
+    Title = "Players to teleport",
+    Values = updateTeleportPlayers(),
+    Value = "Select Player",
+    Callback = function(selected)
+        teleportTarget = Players:FindFirstChild(selected)
+    end
+})
+
+-- Функция телепортации
+local function teleportToPlayer()
+    if teleportTarget and teleportTarget.Character then
+        local targetRoot = teleportTarget.Character:FindFirstChild("HumanoidRootPart")
+        local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        
+        if targetRoot and localRoot then
+            localRoot.CFrame = targetRoot.CFrame
+            WindUI:Notify({
+                Title = "Телепортация",
+                Content = "Успешно телепортирован к "..teleportTarget.Name,
+                Icon = "check-circle",
+                Duration = 3
+            })
+        end
+    else
+        WindUI:Notify({
+            Title = "Ошибка",
+            Content = "Цель не найдена или недоступна",
+            Icon = "x-circle",
+            Duration = 3
+        })
+    end
+end
+
+-- Кнопка телепортации
+Tabs.TeleportTab:Button({
+    Title = "Teleport to player",
+    Callback = teleportToPlayer
+})
+
+-- Кнопка обновления списка
+Tabs.TeleportTab:Button({
+    Title = "Update players list",
+    Callback = function()
+        teleportDropdown:Set("Values", updateTeleportPlayers())
+    end
+})
+
+-- Автоматическое обновление при подключении/отключении игроков
+Players.PlayerAdded:Connect(function()
+    teleportDropdown:Set("Values", updateTeleportPlayers())
+end)
+
+Players.PlayerRemoving:Connect(function()
+    teleportDropdown:Set("Values", updateTeleportPlayers())
+end)
+
 
 --[[ АИМБОТ СИСТЕМА ]]--
 local UserInputService = game:GetService("UserInputService")
@@ -582,7 +654,7 @@ local function UpdateHitboxes()
                             box = Instance.new("BoxHandleAdornment")
                             box.Adornee = root
                             box.Size = Vector3.new(Settings.Hitbox.Size, Settings.Hitbox.Size, Settings.Hitbox.Size)
-                            box.Color3 = Settings.Hitbox.Color
+box.Color3 = Settings.Hitbox.Color
                             box.Transparency = 0.4
                             box.ZIndex = 10
                             box.Parent = root
@@ -848,6 +920,7 @@ Tabs.CreateThemeTab:Colorpicker({
         ThemePlaceholderText = color -- Убрано :ToHex()
     end
 })
+
 Tabs.CreateThemeTab:Button({
     Title = "Update Theme",
     Callback = function()
@@ -867,4 +940,3 @@ Tabs.CreateThemeTab:Button({
         })
     end
 })
-
