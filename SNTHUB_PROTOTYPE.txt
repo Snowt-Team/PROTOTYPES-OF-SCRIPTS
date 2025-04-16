@@ -1,28 +1,7 @@
 local WindUI = loadstring(game:HttpGet("https://tree-hub.vercel.app/api/UI/WindUI"))()
-if not WindUI then
-    warn("Не удалось загрузить WindUI!")
-    return
-end
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-LocalPlayer:WaitForChild("PlayerGui")
-
-local lastErrorTime = 0
-   local function SafeCall(fn)
-       local s, err = pcall(fn)
-       if not s and os.time() - lastErrorTime > 5 then 
-           lastErrorTime = os.time()
-           WindUI:Notify({
-            Title = "Ошибка",
-            Content = "Произошла ошибка: " .. tostring(err),
-            Icon = "alert",
-            Duration = 5,
-            Background = "rbxassetid://13511292247"
-        })
-       end
-       return s
-   end
 
 function gradient(text, startColor, endColor)
     local result = ""
@@ -70,7 +49,6 @@ WindUI:Notify({
     Content = "Скрипт успешно загружен!",
     Icon = "check-circle",
     Duration = 3,
-    Background = "rbxassetid://13511292247"
 })
 
 
@@ -81,7 +59,7 @@ local Window = WindUI:CreateWindow({
     Folder = "SNT Hub",
     Size = UDim2.fromOffset(340, 320),
     Transparent = true,
-    Theme = "Black",
+    Theme = "Dark",
     SideBarWidth = 200,
     UserEnabled = true,
     HasOutline = true,
@@ -130,16 +108,6 @@ local CharacterSettings = {
 
 local function updateCharacter()
     local character = LocalPlayer.Character
-    if not character then 
-        WindUI:Notify({
-            Title = "Предупреждение",
-            Content = "Персонаж не найден",
-            Icon = "info",
-            Duration = 3
-        })
-        return 
-    end
-    
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if humanoid then
         if not CharacterSettings.WalkSpeed.Locked then
@@ -159,7 +127,7 @@ local function updateCharacter()
 end
 
 Tabs.Character:Slider({
-    Title = "Скорость передвижения",
+    Title = "Walkspeed",
     Value = {Min = 0, Max = 200, Default = 16},
     Callback = function(value)
         CharacterSettings.WalkSpeed.Value = value
@@ -168,7 +136,7 @@ Tabs.Character:Slider({
 })
 
 Tabs.Character:Button({
-    Title = "Сброс скорости",
+    Title = "Reset walkspeed",
     Callback = function()
         CharacterSettings.WalkSpeed.Value = CharacterSettings.WalkSpeed.Default
         updateCharacter()
@@ -176,7 +144,7 @@ Tabs.Character:Button({
 })
 
 Tabs.Character:Toggle({
-    Title = "Фиксировать скорость",
+    Title = "Block walkspeed",
     Default = false,
     Callback = function(state)
         CharacterSettings.WalkSpeed.Locked = state
@@ -185,7 +153,7 @@ Tabs.Character:Toggle({
 })
 
 Tabs.Character:Slider({
-    Title = "Сила прыжка",
+    Title = "Jumppower",
     Value = {Min = 0, Max = 200, Default = 50},
     Callback = function(value)
         CharacterSettings.JumpPower.Value = value
@@ -195,7 +163,7 @@ Tabs.Character:Slider({
 
 
 Tabs.Character:Button({
-    Title = "Сброс прыжка",
+    Title = "Reset jumppower",
     Callback = function()
         CharacterSettings.JumpPower.Value = CharacterSettings.JumpPower.Default
         updateCharacter()
@@ -203,7 +171,7 @@ Tabs.Character:Button({
 })
 
 Tabs.Character:Toggle({
-    Title = "Фиксировать прыжок",
+    Title = "Block jumppower",
     Default = false,
     Callback = function(state)
         CharacterSettings.JumpPower.Locked = state
@@ -228,7 +196,7 @@ local ESPSettings = {
 
 -- Настройки ESP
 Tabs.ESP:Toggle({
-    Title = "Показывать имена",
+    Title = "Name ESP",
     Default = false,
     Callback = function(state) 
         ESPSettings.Names = state
@@ -236,7 +204,7 @@ Tabs.ESP:Toggle({
 })
 
 Tabs.ESP:Toggle({
-    Title = "Показывать дистанцию",
+    Title = "Distance ESP",
     Default = false,
     Callback = function(state) 
         ESPSettings.Distance = state
@@ -244,7 +212,7 @@ Tabs.ESP:Toggle({
 })
 
 Tabs.ESP:Toggle({
-    Title = "Подсветка игроков",
+    Title = "Highlight ESP",
     Default = false,
     Callback = function(state) 
         ESPSettings.Highlight = state
@@ -252,7 +220,7 @@ Tabs.ESP:Toggle({
 })
 
 Tabs.ESP:Colorpicker({
-    Title = "Цвет подсветки",
+    Title = "Highlight color",
     Default = ESPSettings.Color,
     Callback = function(color)
         ESPSettings.Color = color
@@ -260,7 +228,7 @@ Tabs.ESP:Colorpicker({
 })
 
 Tabs.ESP:Input({
-    Title = "Прозрачность",
+    Title = "Highlight transparency",
     Default = 0.5,
     Callback = function(value)
         ESPSettings.Transparency = value
@@ -268,7 +236,7 @@ Tabs.ESP:Input({
 })
 
 Tabs.ESP:Colorpicker({
-    Title = "Цвет текста",
+    Title = "Esp text color",
     Default = ESPSettings.TextColor,
     Callback = function(color)
         ESPSettings.TextColor = color
@@ -276,7 +244,7 @@ Tabs.ESP:Colorpicker({
 })
 
 Tabs.ESP:Slider({
-    Title = "Размер текста",
+    Title = "Esp text size",
     Value = {Min = 12, Max = 24, Default = 18},
     Callback = function(value)
         ESPSettings.TextSize = value
@@ -416,7 +384,6 @@ end
 local camera = workspace.CurrentCamera
 
  local function updateCameraLookAt()
-    SafeCall(function()
         if isCameraLocked then
             -- Проверка на валидность lockedPlayer
             if not (lockedPlayer and isValidTarget(lockedPlayer)) then
@@ -440,7 +407,6 @@ local camera = workspace.CurrentCamera
                 targetIndicator.Enabled = false
             end
         end
-    end)
 end
 
 
@@ -452,7 +418,7 @@ local function isValidTarget(player)
 
 --[[ ОБНОВЛЕННЫЕ КОЛЛБЭКИ ]]--
 Tabs.Aimbot:Toggle({
-    Title = "Сфокусировать камеру на игрока",
+    Title = "Lock camera to player",
     Default = false,
     Callback = function(state)
         isCameraLocked = state
@@ -591,7 +557,6 @@ local Settings = {
 
 -- Ноклип
 local function ToggleNoclip(state)
-    SafeCall(function()
         if state then
             Settings.Noclip.Connection = RunService.Stepped:Connect(function()
                 local chr = LocalPlayer.Character
@@ -602,24 +567,16 @@ local function ToggleNoclip(state)
                         end
                     end
                 end
-            end)
+                end)
         else
             if Settings.Noclip.Connection then
                 Settings.Noclip.Connection:Disconnect()
             end
         end
-    WindUI:Notify({
-            Title = "Ноклип",
-            Content = state and "Активирован" or "Деактивирован",
-            Icon = "check-circle",
-            Duration = 2
-        })
-    end)
 end
 
 -- Хитбоксы
 local function UpdateHitboxes()
-    SafeCall(function()
         for _, plr in pairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer then
                 local chr = plr.Character
@@ -648,12 +605,10 @@ local function UpdateHitboxes()
                 end
             end
         end
-    end)
 end
 
 -- Анти-AFK
 local function ToggleAntiAFK(state)
-   SafeCall(function()
         if state then
             Settings.AntiAFK.Connection = RunService.Heartbeat:Connect(function()
                 pcall(function()
@@ -673,7 +628,6 @@ local function ToggleAntiAFK(state)
             Icon = "check-circle",
             Duration = 2
         })
-    end)
 end
 
 -- Интерфейс
@@ -695,7 +649,7 @@ Tabs.Settings:Toggle({
         else
             for _, box in pairs(Settings.Hitbox.Adornments) do
                 box:Destroy()
-            end
+   end
             Settings.Hitbox.Adornments = {}
         end
     end
