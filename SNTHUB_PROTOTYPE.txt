@@ -725,7 +725,7 @@ end)
 
 -- UI настройки
 
-local HttpService = game:local HttpService = game:GetService("HttpService")
+local HttpService = game:GetService("HttpService")
 
 local folderPath = "WindUI"
 makefolder(folderPath)
