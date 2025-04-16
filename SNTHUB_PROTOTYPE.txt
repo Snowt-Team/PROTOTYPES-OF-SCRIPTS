@@ -42,7 +42,7 @@ WindUI:Popup({
     }
 })
 
-repeat wait() until Confirmed
+repeat task.wait() until Confirmed
 
 WindUI:Notify({
     Title = "SNT HUB",
@@ -57,7 +57,7 @@ local Window = WindUI:CreateWindow({
     Icon = "eye",
     Author = "SnOwT",
     Folder = "WindUI",
-    Size = UDim2.fromOffset(340, 320),
+    Size = UDim2.fromOffset(360, 330),
     Transparent = true,
     Theme = "Dark",
     SideBarWidth = 200,
@@ -668,13 +668,6 @@ Tabs.SettingsTab:Toggle({
     end
 })
 
--- Очистка
-game:BindToClose(function()
-    ToggleNoclip(false)
-    ToggleAntiAFK(false)
-    for _,v in pairs(Settings.Hitbox.Adornments) do v:Destroy() end
-end)
-
 -- UI настройки
 local HttpService = game:GetService("HttpService")
 
@@ -707,7 +700,6 @@ local function ListFiles()
 end
 
 Tabs.WindowTab:Section({ Title = "Window" })
-
 local themeValues = {}
 for name, _ in pairs(WindUI:GetThemes()) do
     table.insert(themeValues, name)
@@ -723,6 +715,7 @@ local themeDropdown = Tabs.WindowTab:Dropdown({
         WindUI:SetTheme(theme)
     end
 })
+
 themeDropdown:Select(WindUI:GetCurrentTheme())
 
 local ToggleTransparency = Tabs.WindowTab:Toggle({
@@ -824,19 +817,11 @@ function updateTheme()
     WindUI:SetTheme(currentThemeName)
 end
 
-local CreateInput = Tabs.CreateThemeTab:Input({
-    Title = "Theme Name",
-    Value = currentThemeName,
-    Callback = function(name)
-        currentThemeName = name
-    end
-})
-
 Tabs.CreateThemeTab:Colorpicker({
     Title = "Background Color",
     Default = Color3.fromHex(ThemeAccent),
     Callback = function(color)
-        ThemeAccent = color:ToHex()
+        ThemeAccent = color -- Убрано :ToHex()
     end
 })
 
@@ -844,7 +829,7 @@ Tabs.CreateThemeTab:Colorpicker({
     Title = "Outline Color",
     Default = Color3.fromHex(ThemeOutline),
     Callback = function(color)
-        ThemeOutline = color:ToHex()
+        ThemeOutline = color -- Убрано :ToHex()
     end
 })
 
@@ -852,7 +837,7 @@ Tabs.CreateThemeTab:Colorpicker({
     Title = "Text Color",
     Default = Color3.fromHex(ThemeText),
     Callback = function(color)
-        ThemeText = color:ToHex()
+        ThemeText = color -- Убрано :ToHex()
     end
 })
 
@@ -860,13 +845,6 @@ Tabs.CreateThemeTab:Colorpicker({
     Title = "Placeholder Text Color",
     Default = Color3.fromHex(ThemePlaceholderText),
     Callback = function(color)
-        ThemePlaceholderText = color:ToHex()
-    end
-})
-
-Tabs.CreateThemeTab:Button({
-    Title = "Update theme",
-    Callback = function()
-        updateTheme()
+        ThemePlaceholderText = color -- Убрано :ToHex()
     end
 })
