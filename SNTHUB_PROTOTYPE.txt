@@ -4,6 +4,20 @@ if not WindUI then
     return
 end
 
+local function SafeCall(fn)
+    local s, err = pcall(fn)
+    if not s then 
+        WindUI:Notify({
+            Title = "Ошибка",
+            Content = "Произошла ошибка: " .. tostring(err),
+            Icon = "alert",
+            Duration = 5,
+            Background = "rbxassetid://13511292247"
+        })
+    end
+    return s
+end
+
 function gradient(text, startColor, endColor)
     local result = ""
     local length = #text
@@ -187,7 +201,6 @@ Tabs.Character:Toggle({
 })
 
 --[[ СИСТЕМА ESP ]]--
-
 local camera = workspace.CurrentCamera
 local playerHighlights = {}
 local textLabels = {}
@@ -388,47 +401,37 @@ local function getNearestPlayer(radius)
     
     return nearestPlayer
 end
+local camera = workspace.CurrentCamera
 
 local function updateCameraLookAt()
     SafeCall(function()
-    if isCameraLocked then
-        -- Автоматический поиск цели если текущая невалидна
-        if not lockedPlayer 
-            or not lockedPlayer.Character 
-            or not lockedPlayer.Character:FindFirstChild("HumanoidRootPart") 
-        then
-            lockedPlayer = getNearestPlayer(lockRadius)
-        end
+        if isCameraLocked then
+            
+            if not isValidTarget(lockedPlayer) then
+                lockedPlayer = getNearestPlayer(lockRadius)
+            end
 
-        -- Обновление позиции камеры
-        if lockedPlayer and lockedPlayer.Character then
-            local targetPart = lockedPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if targetPart then
-                camera.CameraType = Enum.CameraType.Scriptable
-                local newCFrame = CFrame.lookAt(camera.CFrame.Position, targetPart.Position)
-                camera.CFrame = camera.CFrame:Lerp(newCFrame, cameraRotationSpeed)
-                targetIndicator.Adornee = targetPart
-                targetIndicator.Enabled = true
-                return
+            if lockedPlayer and isValidTarget(lockedPlayer) then
+                local targetPart = lockedPlayer.Character.HumanoidRootPart
+                if targetPart then
+                    camera.CameraType = Enum.CameraType.Scriptable
+                    local newCFrame = CFrame.lookAt(camera.CFrame.Position, targetPart.Position)
+                    camera.CFrame = camera.CFrame:Lerp(newCFrame, cameraRotationSpeed)
+                    targetIndicator.Adornee = targetPart
+                    targetIndicator.Enabled = true
+                end
+            else
+                camera.CameraType = defaultCameraType
+                targetIndicator.Enabled = false
             end
         end
-        
-        -- Сброс при отсутствии целей
-        camera.CameraType = defaultCameraType
-        targetIndicator.Enabled = false
-    else
-        camera.CameraType = defaultCameraType
-        targetIndicator.Enabled = false
-    end
-    if not isValidTarget(lockedPlayer) then
-            WindUI:Notify({
-                Title = "Цель недействительна",
-                Content = "Выберите другую цель",
-                Icon = "info",
-                Duration = 3
-            })
-        end
     end)
+end
+
+local function isValidTarget(player)
+    return player and player.Character and 
+        player.Character:FindFirstChild("Humanoid") and 
+        player.Character.Humanoid.Health > 0
 end
 
 --[[ ОБНОВЛЕННЫЕ КОЛЛБЭКИ ]]--
@@ -444,7 +447,7 @@ Tabs.Aimbot:Toggle({
     end
 })
 
---[[ ДОПОЛНЕНИЕ ДЛЯ РУЧНОГО ВЫБОРА ЦЕЛИ ]]--
+
 local function updatePlayerDropdown()
     local playersList = {"None"}
     for _, player in Players:GetPlayers() do
@@ -552,18 +555,6 @@ LocalPlayer.CharacterRemoving:Connect(function()
     end
 end)
 
--- Фильтрация мертвых игроков
-local function isValidTarget(player)
-    return player and player.Character and 
-        player.Character:FindFirstChild("Humanoid") and 
-        player.Character.Humanoid.Health > 0
-end
-
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-
 local Settings = {
     Hitbox = {
         Enabled = false,
@@ -581,20 +572,6 @@ local Settings = {
         Connection = nil
     }
 }
-local function SafeCall(fn)
-    local s, err = pcall(fn)
-    if not s then 
-        WindUI:Notify({
-            Title = "Ошибка",
-            Content = "Произошла ошибка: " .. tostring(err),
-            Icon = "alert",
-            Duration = 5,
-            Background = "rbxassetid://13511292247"
-        })
-    end
-    return s
-end
-
 
 -- Ноклип
 local function ToggleNoclip(state)
@@ -791,7 +768,6 @@ function updateTheme()
         PlaceholderText = ThemePlaceholderText
     })
     WindUI:SetTheme(currentThemeName)
-    WindUI:Notify({Title = "Тема обновлена!", Content = currentThemeName, Duration = 2}) -- Уведомление для отладки
 end
 
 local ToggleTransparency = Tabs.SettingsUI:Toggle({
@@ -873,10 +849,8 @@ local function ListFiles()
     local files = {}
     if isfolder(folderPath) then
         for _, file in ipairs(listfiles(folderPath)) do
-            local fileName = file:match(".+/(.+)%.json$") -- Исправлен паттерн
-            if fileName then
-                table.insert(files, fileName)
-            end
+            local fileName = file:gsub(folderPath .. "\\", ""):gsub(".json", "")
+            table.insert(files, fileName)
         end
     end
     return files
