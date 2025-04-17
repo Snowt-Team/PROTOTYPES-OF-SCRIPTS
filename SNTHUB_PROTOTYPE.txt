@@ -54,7 +54,7 @@ WindUI:Notify({
 
 local Window = WindUI:CreateWindow({
     Title = "[Prototype] Universal | SNT Hub [v1.1]",
-    Icon = "eye",
+    Icon = "infinity",
     Author = "SnOwT",
     Folder = "WindUI",
     Size = UDim2.fromOffset(360, 330),
@@ -88,6 +88,8 @@ local Tabs = {
     TeleportTab = Window:Tab({ Title = "Teleport", Icon = "user" }),
     EspTab = Window:Tab({ Title = "ESP", Icon = "eye" }),
     AimbotTab = Window:Tab({ Title = "Aimbot", Icon = "axe" }),
+    FlyTab = Window:Tab({ Title = "Fly", Icon = "rocket", Locked = true }),
+    ServerTab = Window:Tab({ Title = "Server", Icon = "atom", Locked = true }),
     SettingsTab = Window:Tab({ Title = "Settings", Icon = "code" }),
     b = Window:Divider(),
     WindowTab = Window:Tab({ Title = "Window and File Configuration", Icon = "settings", Desc = "Manage window settings and file configurations." }),
