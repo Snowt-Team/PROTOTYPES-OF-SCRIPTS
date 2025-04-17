@@ -91,6 +91,7 @@ local Tabs = {
     FlyTab = Window:Tab({ Title = "Fly", Icon = "rocket", Locked = true }),
     ServerTab = Window:Tab({ Title = "Server", Icon = "atom", Locked = true }),
     SettingsTab = Window:Tab({ Title = "Settings", Icon = "code" }),
+    ChangelogsTab = Window:Tab({ Title = "Changelogs", Icon = "info", Locker = true }),
     b = Window:Divider(),
     WindowTab = Window:Tab({ Title = "Window and File Configuration", Icon = "settings", Desc = "Manage window settings and file configurations." }),
     CreateThemeTab = Window:Tab({ Title = "Create Theme", Icon = "palette", Desc = "Design and apply custom themes." }),
