@@ -1,0 +1,599 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+
+-- Создание главного GUI
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.ResetOnSpawn = false
+gui.Name = "SNT_HUB"
+
+-- Настройки интерфейса
+local settings = {
+    minimized = false,
+    aimbotEnabled = false,
+    activeTab = "Аимбот",
+    sectionsState = {} -- Для хранения состояния сворачиваемых разделов
+}
+
+-- Основное окно с закруглениями
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 340, 0, 360) -- Увеличена высота для скролла
+mainFrame.Position = UDim2.new(0.5, -170, 0.5, -180)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0.08, 0.08, 0.08)
+mainFrame.BackgroundTransparency = 0.15
+mainFrame.Parent = gui
+
+-- Закругление основного окна
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 12)
+mainCorner.Parent = mainFrame
+
+-- Градиентная обводка с закруглениями
+local border = Instance.new("Frame")
+border.Size = UDim2.new(1, 4, 1, 4)
+border.Position = UDim2.new(0, -2, 0, -2)
+border.BackgroundColor3 = Color3.new(1, 1, 1)
+border.ZIndex = -1
+border.Parent = mainFrame
+
+local borderCorner = Instance.new("UICorner")
+borderCorner.CornerRadius = UDim.new(0, 14)
+borderCorner.Parent = border
+
+local gradient = Instance.new("UIGradient")
+gradient.Rotation = 90
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
+})
+gradient.Parent = border
+
+-- Верхняя панель управления
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 32)
+topBar.Position = UDim2.new(0, 0, 0, 0)
+topBar.BackgroundColor3 = Color3.fromRGB(0.1, 0.1, 0.1)
+topBar.BackgroundTransparency = 0.2
+topBar.Parent = mainFrame
+
+local topBarCorner = Instance.new("UICorner")
+topBarCorner.CornerRadius = UDim.new(0, 12)
+topBarCorner.Parent = topBar
+
+-- Кнопка закрытия
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 26, 0, 26)
+closeButton.Position = UDim2.new(1, -30, 0.5, -13)
+closeButton.AnchorPoint = Vector2.new(1, 0.5)
+closeButton.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
+closeButton.BackgroundTransparency = 0.3
+closeButton.Text = "×"
+closeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 18
+closeButton.Parent = topBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeButton
+
+-- Кнопка сворачивания
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 26, 0, 26)
+minimizeButton.Position = UDim2.new(1, -62, 0.5, -13)
+minimizeButton.AnchorPoint = Vector2.new(1, 0.5)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
+minimizeButton.BackgroundTransparency = 0.3
+minimizeButton.Text = "-"
+minimizeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.TextSize = 18
+minimizeButton.Parent = topBar
+
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(0, 6)
+minimizeCorner.Parent = minimizeButton
+
+-- Кнопка восстановления
+local restoreButton = Instance.new("TextButton")
+restoreButton.Size = UDim2.new(0, 80, 0, 30)
+restoreButton.Position = UDim2.new(0, 10, 0, 10)
+restoreButton.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
+restoreButton.BackgroundTransparency = 0.3
+restoreButton.Text = "МЕНЮ"
+restoreButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+restoreButton.Font = Enum.Font.GothamBold
+restoreButton.TextSize = 14
+restoreButton.Visible = false
+restoreButton.Parent = gui
+
+local restoreCorner = Instance.new("UICorner")
+restoreCorner.CornerRadius = UDim.new(0, 8)
+restoreCorner.Parent = restoreButton
+
+-- Заголовок
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(0, 150, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "SNT HUB"
+titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+titleLabel.Font = Enum.Font.GothamBlack
+titleLabel.TextSize = 16
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = topBar
+
+-- Время после инжекта
+local uptimeLabel = Instance.new("TextLabel")
+uptimeLabel.Size = UDim2.new(0, 80, 0, 16)
+uptimeLabel.Position = UDim2.new(1, -90, 0, 4)
+uptimeLabel.AnchorPoint = Vector2.new(1, 0)
+uptimeLabel.BackgroundTransparency = 1
+uptimeLabel.Text = "00:00:00"
+uptimeLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+uptimeLabel.Font = Enum.Font.Gotham
+uptimeLabel.TextSize = 14
+uptimeLabel.TextXAlignment = Enum.TextXAlignment.Right
+uptimeLabel.Parent = topBar
+
+-- Текущее время
+local timeLabel = Instance.new("TextLabel")
+timeLabel.Size = UDim2.new(0, 80, 0, 14)
+timeLabel.Position = UDim2.new(1, -90, 0, 20)
+timeLabel.AnchorPoint = Vector2.new(1, 0)
+timeLabel.BackgroundTransparency = 1
+timeLabel.Text = "07:36 AM"
+timeLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+timeLabel.Font = Enum.Font.Gotham
+timeLabel.TextSize = 12
+timeLabel.TextXAlignment = Enum.TextXAlignment.Right
+timeLabel.Parent = topBar
+
+-- День недели
+local dayLabel = Instance.new("TextLabel")
+dayLabel.Size = UDim2.new(0, 80, 0, 14)
+dayLabel.Position = UDim2.new(1, -90, 0, 34)
+dayLabel.AnchorPoint = Vector2.new(1, 0)
+dayLabel.BackgroundTransparency = 1
+dayLabel.Text = "Sunday"
+dayLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+dayLabel.Font = Enum.Font.Gotham
+dayLabel.TextSize = 12
+dayLabel.TextXAlignment = Enum.TextXAlignment.Right
+dayLabel.Parent = topBar
+
+-- Панель вкладок с возможностью скролла
+local tabFrame = Instance.new("ScrollingFrame")
+tabFrame.Size = UDim2.new(0, 90, 1, -40)
+tabFrame.Position = UDim2.new(0, 0, 0, 40)
+tabFrame.BackgroundColor3 = Color3.fromRGB(0.1, 0.1, 0.1)
+tabFrame.BackgroundTransparency = 0.2
+tabFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+tabFrame.ScrollBarThickness = 4
+tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabFrame.Parent = mainFrame
+
+local tabCorner = Instance.new("UICorner")
+tabCorner.CornerRadius = UDim.new(0, 8)
+tabCorner.Parent = tabFrame
+
+-- Контентная область с возможностью скролла
+local contentFrame = Instance.new("ScrollingFrame")
+contentFrame.Size = UDim2.new(1, -100, 1, -40)
+contentFrame.Position = UDim2.new(0, 90, 0, 40)
+contentFrame.BackgroundTransparency = 1
+contentFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+contentFrame.ScrollBarThickness = 4
+contentFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+contentFrame.Parent = mainFrame
+
+-- Создание вкладок
+local tabs = {
+    "Аимбот",
+    "Автофарм",
+    "Настройки",
+    "Инструменты",
+    "Анимации",
+    "Транспорт",
+    "Дом"
+}
+
+local tabContents = {}
+local tabButtons = {}
+
+-- Функция для создания сворачиваемых разделов
+local function createCollapsibleSection(parent, title, defaultState)
+    local section = Instance.new("Frame")
+    section.Size = UDim2.new(1, -20, 0, 40)
+    section.Position = UDim2.new(0, 10, 0, #parent:GetChildren() * 45)
+    section.BackgroundColor3 = Color3.fromRGB(0.1, 0.1, 0.1)
+    section.BackgroundTransparency = 0.3
+    section.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = section
+    
+    local header = Instance.new("TextButton")
+    header.Size = UDim2.new(1, 0, 0, 30)
+    header.Position = UDim2.new(0, 0, 0, 0)
+    header.BackgroundTransparency = 1
+    header.Text = "  "..title
+    header.TextColor3 = Color3.fromRGB(220, 220, 220)
+    header.Font = Enum.Font.GothamBold
+    header.TextSize = 14
+    header.TextXAlignment = Enum.TextXAlignment.Left
+    header.Parent = section
+    
+    local toggleIcon = Instance.new("TextLabel")
+    toggleIcon.Size = UDim2.new(0, 20, 0, 20)
+    toggleIcon.Position = UDim2.new(1, -20, 0, 5)
+    toggleIcon.AnchorPoint = Vector2.new(1, 0)
+    toggleIcon.BackgroundTransparency = 1
+    toggleIcon.Text = defaultState and "▼" or "▶"
+    toggleIcon.TextColor3 = Color3.fromRGB(200, 200, 200)
+    toggleIcon.Font = Enum.Font.GothamBold
+    toggleIcon.TextSize = 14
+    toggleIcon.Parent = header
+    
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 0, 0)
+    content.Position = UDim2.new(0, 0, 0, 35)
+    content.BackgroundTransparency = 1
+    content.ClipsDescendants = true
+    content.Visible = defaultState
+    content.Parent = section
+    
+    header.MouseButton1Click:Connect(function()
+        content.Visible = not content.Visible
+        toggleIcon.Text = content.Visible and "▼" or "▶"
+        buttonPressEffect(header)
+    end)
+    
+    return content
+end
+
+-- Создание вкладок и их содержимого
+for i, tabName in ipairs(tabs) do
+    -- Кнопка вкладки
+    local tabButton = Instance.new("TextButton")
+    tabButton.Size = UDim2.new(1, -10, 0, 30)
+    tabButton.Position = UDim2.new(0, 5, 0, 10 + (i-1)*35)
+    tabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    tabButton.BackgroundTransparency = 0.5
+    tabButton.Text = tabName
+    tabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+    tabButton.Font = Enum.Font.GothamBold
+    tabButton.TextSize = 14
+    tabButton.AutoButtonColor = false
+    tabButton.Parent = tabFrame
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 6)
+    buttonCorner.Parent = tabButton
+    
+    -- Индикатор активной вкладки
+    local indicator = Instance.new("Frame")
+    indicator.Size = UDim2.new(0, 3, 0.7, 0)
+    indicator.Position = UDim2.new(0, 2, 0.15, 0)
+    indicator.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+    indicator.BorderSizePixel = 0
+    indicator.Visible = (tabName == settings.activeTab)
+    indicator.Parent = tabButton
+    
+    local indicatorCorner = Instance.new("UICorner")
+    indicatorCorner.CornerRadius = UDim.new(0, 2)
+    indicatorCorner.Parent = indicator
+    
+    -- Контент вкладки
+    local tabContent = Instance.new("Frame")
+    tabContent.Size = UDim2.new(1, 0, 1, 0)
+    tabContent.BackgroundTransparency = 1
+    tabContent.Visible = (tabName == settings.activeTab)
+    tabContent.Parent = contentFrame
+    
+    tabContents[tabName] = tabContent
+    tabButtons[tabName] = {
+        button = tabButton,
+        indicator = indicator
+    }
+    
+    -- Обработчик клика по вкладке
+    tabButton.MouseButton1Click:Connect(function()
+        settings.activeTab = tabName
+        for name, data in pairs(tabButtons) do
+            data.indicator.Visible = (name == tabName)
+            tabContents[name].Visible = (name == tabName)
+        end
+        buttonPressEffect(tabButton)
+    end)
+    
+    -- Заполнение контента вкладок (пример для Аимбота)
+    if tabName == "Аимбот" then
+        -- Ползунок тоггла аимбота
+        local toggleContainer = Instance.new("Frame")
+        toggleContainer.Size = UDim2.new(1, -20, 0, 40)
+        toggleContainer.Position = UDim2.new(0, 10, 0, 20)
+        toggleContainer.BackgroundTransparency = 1
+        toggleContainer.Parent = tabContent
+        
+        local toggleLabel = Instance.new("TextLabel")
+        toggleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+        toggleLabel.Position = UDim2.new(0, 0, 0, 0)
+        toggleLabel.BackgroundTransparency = 1
+        toggleLabel.Text = "Активировать аимбот"
+        toggleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+        toggleLabel.Font = Enum.Font.Gotham
+        toggleLabel.TextSize = 14
+        toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        toggleLabel.Parent = toggleContainer
+        
+        local toggleTrack = Instance.new("Frame")
+        toggleTrack.Size = UDim2.new(0, 50, 0, 25)
+        toggleTrack.Position = UDim2.new(1, -10, 0.5, -12)
+        toggleTrack.AnchorPoint = Vector2.new(1, 0.5)
+        toggleTrack.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        toggleTrack.Parent = toggleContainer
+        
+        local toggleCorner = Instance.new("UICorner")
+        toggleCorner.CornerRadius = UDim.new(0, 12)
+        toggleCorner.Parent = toggleTrack
+        
+        local toggleThumb = Instance.new("Frame")
+        toggleThumb.Size = UDim2.new(0, 21, 0, 21)
+        toggleThumb.Position = UDim2.new(0, 2, 0.5, -10)
+        toggleThumb.AnchorPoint = Vector2.new(0, 0.5)
+        toggleThumb.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        toggleThumb.Parent = toggleTrack
+        
+        local thumbCorner = Instance.new("UICorner")
+        thumbCorner.CornerRadius = UDim.new(0.5, 0)
+        thumbCorner.Parent = toggleThumb
+        
+        local toggleButton = Instance.new("TextButton")
+        toggleButton.Size = UDim2.new(1, 0, 1, 0)
+        toggleButton.BackgroundTransparency = 1
+        toggleButton.Text = ""
+        toggleButton.Parent = toggleTrack
+        
+        -- Обработчик тоггла
+        toggleButton.MouseButton1Click:Connect(function()
+            settings.aimbotEnabled = not settings.aimbotEnabled
+            updateAimbotToggle(toggleThumb, toggleTrack)
+            buttonPressEffect(toggleButton)
+        end)
+    elseif tabName == "Автофарм" then
+        -- Пример сворачиваемого раздела для Автофарма
+        local farmSection = createCollapsibleSection(tabContent, "Настройки фарма", true)
+        
+        local toggle1 = createToggle(farmSection, "Авто-сбор", UDim2.new(0, 10, 0, 10))
+        local toggle2 = createToggle(farmSection, "Авто-продажа", UDim2.new(0, 10, 0, 60))
+    end
+end
+
+-- Функция создания тогглов
+local function createToggle(parent, text, position)
+    local toggleContainer = Instance.new("Frame")
+    toggleContainer.Size = UDim2.new(1, -20, 0, 40)
+    toggleContainer.Position = position
+    toggleContainer.BackgroundTransparency = 1
+    toggleContainer.Parent = parent
+    
+    local toggleLabel = Instance.new("TextLabel")
+    toggleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    toggleLabel.Position = UDim2.new(0, 0, 0, 0)
+    toggleLabel.BackgroundTransparency = 1
+    toggleLabel.Text = text
+    toggleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+    toggleLabel.Font = Enum.Font.Gotham
+    toggleLabel.TextSize = 14
+    toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    toggleLabel.Parent = toggleContainer
+    
+    local toggleTrack = Instance.new("Frame")
+    toggleTrack.Size = UDim2.new(0, 50, 0, 25)
+    toggleTrack.Position = UDim2.new(1, -10, 0.5, -12)
+    toggleTrack.AnchorPoint = Vector2.new(1, 0.5)
+    toggleTrack.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    toggleTrack.Parent = toggleContainer
+    
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 12)
+    toggleCorner.Parent = toggleTrack
+    
+    local toggleThumb = Instance.new("Frame")
+    toggleThumb.Size = UDim2.new(0, 21, 0, 21)
+    toggleThumb.Position = UDim2.new(0, 2, 0.5, -10)
+    toggleThumb.AnchorPoint = Vector2.new(0, 0.5)
+    toggleThumb.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    toggleThumb.Parent = toggleTrack
+    
+    local thumbCorner = Instance.new("UICorner")
+    thumbCorner.CornerRadius = UDim.new(0.5, 0)
+    thumbCorner.Parent = toggleThumb
+    
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(1, 0, 1, 0)
+    toggleButton.BackgroundTransparency = 1
+    toggleButton.Text = ""
+    toggleButton.Parent = toggleTrack
+    
+    local state = false
+    
+    local function updateToggle()
+        if state then
+            TweenService:Create(toggleThumb, TweenInfo.new(0.2), {
+                Position = UDim2.new(1, -23, 0.5, -10),
+                BackgroundColor3 = Color3.fromRGB(50, 180, 50)
+            }):Play()
+            TweenService:Create(toggleTrack, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(30, 80, 30)
+            }):Play()
+        else
+            TweenService:Create(toggleThumb, TweenInfo.new(0.2), {
+                Position = UDim2.new(0, 2, 0.5, -10),
+                BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+            }):Play()
+            TweenService:Create(toggleTrack, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            }):Play()
+        end
+    end
+    
+    toggleButton.MouseButton1Click:Connect(function()
+        state = not state
+        updateToggle()
+        buttonPressEffect(toggleButton)
+    end)
+    
+    updateToggle()
+    
+    return {
+        container = toggleContainer,
+        setState = function(newState)
+            state = newState
+            updateToggle()
+        end,
+        getState = function()
+            return state
+        end
+    }
+end
+
+-- Функция обновления тоггла аимбота
+local function updateAimbotToggle(thumb, track)
+    if settings.aimbotEnabled then
+        TweenService:Create(thumb, TweenInfo.new(0.2), {
+            Position = UDim2.new(1, -23, 0.5, -10),
+            BackgroundColor3 = Color3.fromRGB(50, 180, 50)
+        }):Play()
+        TweenService:Create(track, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(30, 80, 30)
+        }):Play()
+    else
+        TweenService:Create(thumb, TweenInfo.new(0.2), {
+            Position = UDim2.new(0, 2, 0.5, -10),
+            BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        }):Play()
+        TweenService:Create(track, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        }):Play()
+    end
+end
+
+-- Анимация нажатия кнопок
+local function buttonPressEffect(button)
+    local originalSize = button.Size
+    local originalPos = button.Position
+    
+    local tweenInfo = TweenInfo.new(0.08, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+    local tweenDown = TweenService:Create(button, tweenInfo, {
+        Size = originalSize - UDim2.new(0, 4, 0, 4),
+        Position = originalPos + UDim2.new(0, 2, 0, 2)
+    })
+    
+    local tweenInfoUp = TweenInfo.new(0.12, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+    local tweenUp = TweenService:Create(button, tweenInfoUp, {
+        Size = originalSize,
+        Position = originalPos
+    })
+    
+    tweenDown:Play()
+    tweenDown.Completed:Wait()
+    tweenUp:Play()
+end
+
+-- Обработчики кнопок управления
+closeButton.MouseButton1Click:Connect(function()
+    buttonPressEffect(closeButton)
+    gui:Destroy()
+end)
+
+minimizeButton.MouseButton1Click:Connect(function()
+    buttonPressEffect(minimizeButton)
+    settings.minimized = true
+    mainFrame.Visible = false
+    restoreButton.Visible = true
+end)
+
+restoreButton.MouseButton1Click:Connect(function()
+    buttonPressEffect(restoreButton)
+    settings.minimized = false
+    mainFrame.Visible = true
+    restoreButton.Visible = false
+end)
+
+-- Обновление времени
+local startTime = os.time()
+RunService.Heartbeat:Connect(function()
+    local elapsed = os.time() - startTime
+    local hours = math.floor(elapsed / 3600)
+    local minutes = math.floor((elapsed % 3600) / 60)
+    local seconds = elapsed % 60
+    uptimeLabel.Text = string.format("%02d:%02d:%02d", hours, minutes, seconds)
+    
+    -- Обновление текущего времени
+    local currentTime = os.date("*t")
+    timeLabel.Text = string.format("%02d:%02d %s", 
+        currentTime.hour > 12 and currentTime.hour - 12 or currentTime.hour,
+        currentTime.min,
+        currentTime.hour >= 12 and "PM" or "AM"
+    )
+    dayLabel.Text = os.date("%A")
+end)
+
+-- Перетаскивание окна с ограничениями
+local dragging = false
+local dragStartPos
+local frameStartPos
+
+local function updateDrag(input)
+    local delta = input.Position - dragStartPos
+    local newX = frameStartPos.X.Offset + delta.X
+    local newY = frameStartPos.Y.Offset + delta.Y
+    
+    -- Ограничение по границам экрана
+    newX = math.clamp(newX, 0, gui.AbsoluteSize.X - mainFrame.AbsoluteSize.X)
+    newY = math.clamp(newY, 0, gui.AbsoluteSize.Y - mainFrame.AbsoluteSize.Y)
+    
+    mainFrame.Position = UDim2.new(frameStartPos.X.Scale, newX, frameStartPos.Y.Scale, newY)
+end
+
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStartPos = input.Position
+        frameStartPos = mainFrame.Position
+    end
+end)
+
+topBar.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateDrag(input)
+    end
+end)
+
+-- Автоматическое центрирование при изменении размера экрана
+gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+    if not dragging then
+        mainFrame.Position = UDim2.new(0.5, -170, 0.5, -180)
+    end
+end)
+
+-- Инициализация
+if tabContents["Аимбот"] then
+    local thumb = tabContents["Аимбот"]:FindFirstChildOfClass("Frame"):FindFirstChildOfClass("Frame")
+    local track = tabContents["Аимбот"]:FindFirstChildOfClass("Frame")
+    if thumb and track then
+        updateAimbotToggle(thumb, track)
+    end
+end
