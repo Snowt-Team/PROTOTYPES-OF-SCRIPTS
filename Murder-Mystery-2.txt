@@ -31,17 +31,17 @@ local Confirmed = false
 WindUI:Popup({
     Title = gradient("SNT Hub", Color3.fromHex("#eb1010"), Color3.fromHex("#1023eb")),
     Icon = "info",
-    Content = gradient("This script made by", Color3.fromHex("#10eb3c"), Color3.fromHex("#67c97a")) .. gradient("SnowTTeam", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Content = gradient("This script made by ", Color3.fromHex("#10eb3c"), Color3.fromHex("#67c97a")) .. gradient("SnowTTeam", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
     Buttons = {
         {
             Title = gradient("Cancel", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
-            --Icon = "",
+            Icon = "cancel",
             Callback = function() end,
             Variant = "Tertiary", -- Primary, Secondary, Tertiary
         },
         {
             Title = gradient("Load", Color3.fromHex("#90f09e"), Color3.fromHex("#13ed34")),
-            Icon = "arrow-right",
+            Icon = "circle-play",
             Callback = function() Confirmed = true end,
             Variant = "Secondary", -- Primary, Secondary, Tertiary
         }
@@ -51,7 +51,7 @@ WindUI:Popup({
 repeat task.wait() until Confirmed
 
 WindUI:Notify({
-    Title = gradient("SNT Hub", Color3.fromHex("#eb1010"), Color3.fromHex("#1023eb")),
+    Title = gradient("SNT HUB", Color3.fromHex("#eb1010"), Color3.fromHex("#1023eb")),
     Content = "Скрипт успешно загружен!",
     Icon = "check-circle",
     Duration = 3,
@@ -73,7 +73,7 @@ local Window = WindUI:CreateWindow({
 
 Window:EditOpenButton({
     Title = "Open UI",
-    Icon = "monitor",
+    Icon = "circle-plus",
     CornerRadius = UDim.new(2, 6),
     StrokeThickness = 2,
     Color = ColorSequence.new(
