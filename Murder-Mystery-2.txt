@@ -29,18 +29,17 @@ end
 local Confirmed = false
 
 WindUI:Popup({
-    Title = gradient("Script loader", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Title = gradient("SNT Hub", Color3.fromHex("#eb1010"), Color3.fromHex("#1023eb")),
     Icon = "info",
-    Content = "This script made by " .. gradient("SnowTTeam", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Content = gradient("This script made by", Color3.fromHex("#10eb3c"), Color3.fromHex("#67c97a")) .. gradient(" SnowTTeam", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
     Buttons = {
         {
-            Title = "Close",
-            --Icon = "",
+            Title = gradient("Cancel", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
             Callback = function() end,
             Variant = "Tertiary", -- Primary, Secondary, Tertiary
         },
         {
-            Title = gradient("Load Script", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+            Title = gradient("Load", Color3.fromHex("#90f09e"), Color3.fromHex("#13ed34")),
             Icon = "arrow-right",
             Callback = function() Confirmed = true end,
             Variant = "Secondary", -- Primary, Secondary, Tertiary
@@ -51,7 +50,7 @@ WindUI:Popup({
 repeat task.wait() until Confirmed
 
 WindUI:Notify({
-    Title = "SNT HUB",
+    Title = gradient("SNT HUB", Color3.fromHex("#eb1010"), Color3.fromHex("#1023eb")),
     Content = "Скрипт успешно загружен!",
     Icon = "check-circle",
     Duration = 3,
@@ -59,9 +58,9 @@ WindUI:Notify({
 
 
 local Window = WindUI:CreateWindow({
-    Title = "SNT&MirrozzScript | MM2 [Alpha]",
+    Title = gradient("SNT&MirrozzScript [Alpha]", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
     Icon = "infinity",
-    Author = "SnOwT",
+    Author = gradient("Murder Mystery 2", Color3.fromHex("#1bf2b2"), Color3.fromHex("#1bcbf2")),
     Folder = "WindUI",
     Size = UDim2.fromOffset(300, 270),
     Transparent = true,
@@ -72,9 +71,9 @@ local Window = WindUI:CreateWindow({
 })
 
 Window:EditOpenButton({
-    Title = "Открыть UI",
+    Title = "Open UI",
     Icon = "monitor",
-    CornerRadius = UDim.new(0, 6),
+    CornerRadius = UDim.new(2, 6),
     StrokeThickness = 2,
     Color = ColorSequence.new(
         Color3.fromHex("1E213D"),
@@ -84,21 +83,21 @@ Window:EditOpenButton({
 })
 
 local Tabs = {
-    MainTab = Window:Tab({ Title = "Main", Icon = "terminal" }),
-    CharacterTab = Window:Tab({ Title = "Character", Icon = "file-cog" }),
-    TeleportTab = Window:Tab({ Title = "Teleport", Icon = "user" }),
-    EspTab = Window:Tab({ Title = "ESP", Icon = "eye" }),
-    AimbotTab = Window:Tab({ Title = "Aimbot", Icon = "arrow-right" }),
-    CombatTab = Window:Tab({ Title = "Combat", Icon = "sword"}),
-    AutoFarm = Window:Tab({ Title = "Autofarm", Icon = "coin"}),
-    ServerTab = Window:Tab({ Title = "Server", Icon = "atom", Locked = true }),
+    MainTab = Window:Tab({ Title = gradient("MAIN", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "terminal" }),
+    CharacterTab = Window:Tab({ Title = gradient("Character", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "file-cog" }),
+    TeleportTab = Window:Tab({ Title = gradient("TELEPORT", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "user" }),
+    EspTab = Window:Tab({ Title = gradient("ESP", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "eye" }),
+    AimbotTab = Window:Tab({ Title = gradient("AIMBOT", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "arrow-right" }),
+    CombatTab = Window:Tab({ Title = gradient("COMBAT", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "sword"}),
+    AutoFarm = Window:Tab({ Title = gradient("AUTOFARM", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "coin"}),
+    ServerTab = Window:Tab({ Title = gradient("SERVER", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "atom", Locked = true }),
     beed = Window:Divider(),
-    SettingsTab = Window:Tab({ Title = "Settings", Icon = "code" }),
-    ChangelogsTab = Window:Tab({ Title = "Changelogs", Icon = "info"}),
-    SocialsTab = Window:Tab({ Title = "Socials", Icon = "star"}),
+    SettingsTab = Window:Tab({ Title = gradient("SETTINGS", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "code" }),
+    ChangelogsTab = Window:Tab({ Title = gradient("CHANGELOGS", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "info"}),
+    SocialsTab = Window:Tab({ Title = gradient("SOCIALS", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "star"}),
     b = Window:Divider(),
-    WindowTab = Window:Tab({ Title = "Window and File Configuration", Icon = "settings", Desc = "Manage window settings and file configurations." }),
-    CreateThemeTab = Window:Tab({ Title = "Create Theme", Icon = "palette", Desc = "Design and apply custom themes." }),
+    WindowTab = Window:Tab({ Title = gradient("CONFIGURATION", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "settings", Desc = "Manage window settings and file configurations." }),
+    CreateThemeTab = Window:Tab({ Title = gradient("THEMES", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "palette", Desc = "Design and apply custom themes." }),
 }
 
 --[[ НАСТРОЙКИ ПЕРСОНАЖА ]]--
