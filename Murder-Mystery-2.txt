@@ -60,8 +60,8 @@ WindUI:Notify({
 
 local Window = WindUI:CreateWindow({
     Title = gradient("SNT&MirrozzScript | MM2 [Alpha]", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
-    Icon = "infinity",
-    Author = "SnOwT",
+    Icon = gradient("infinity", Color3.fromHex("#1624f2"), Color3.fromHex("#f21616")),
+    Author = gradient("SnowTTeam", Color3.fromHex("#1bf2b2"), Color3.fromHex("#1bcbf2")),
     Folder = "WindUI",
     Size = UDim2.fromOffset(300, 270),
     Transparent = true,
@@ -283,7 +283,7 @@ local function UpdateRoles()
 end
 
 -- Тогглы
-Tabs.EspTab:Section({Title = "Special ESP"})
+Tabs.EspTab:Section({Title = gradient("Special ESP", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2"))})
 
 Tabs.EspTab:Toggle({
     Title = gradient("Higlight Murder", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
@@ -295,7 +295,7 @@ Tabs.EspTab:Toggle({
 })
 
 Tabs.EspTab:Toggle({
-    Title = gradient("Highlight Sheriff", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Title = gradient("Highlight Innocent", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
     Default = false,
     Callback = function(state) 
         ESPConfig.HighlightInnocent = state
@@ -401,8 +401,9 @@ Players.PlayerRemoving:Connect(function()
     teleportDropdown:Refresh({"Values", updateTeleportPlayers()})
 end)
 
+--[[ СИСТЕМА АИМБОТА ]]--
 
---[[ СИСТЕМА АИМБОТА ]]---- Переменные
+-- Переменные
 local roles = {}
 local Murder, Sheriff
 local isCameraLocked = false
@@ -436,6 +437,7 @@ local function UpdateRoles()
     end
 end
 
+-- Дропдаун выбора роли
 RoleDropdown = Tabs.AimbotTab:Dropdown({
     Title = "Target Role",
     Values = {"None", "Sheriff", "Murderer"},
@@ -445,6 +447,7 @@ RoleDropdown = Tabs.AimbotTab:Dropdown({
     end
 })
 
+-- Тоггл режима слежения
 Tabs.AimbotTab:Toggle({
     Title = "Spectate Mode",
     Default = false,
@@ -461,6 +464,7 @@ Tabs.AimbotTab:Toggle({
     end
 })
 
+-- Тоггл фиксации камеры (без плавности)
 Tabs.AimbotTab:Toggle({
     Title = "Lock Camera",
     Default = false,
@@ -486,6 +490,7 @@ local function GetTargetPosition()
     return head and head.Position or nil
 end
 
+-- Режим слежения (без изменений)
 local function UpdateSpectate()
     if not isSpectating or not lockedRole then return end
     local targetPos = GetTargetPosition()
@@ -500,15 +505,16 @@ local function UpdateSpectate()
     end
 end
 
+-- Новая версия фиксации камеры (без плавности)
 local function UpdateLockCamera()
     if not isCameraLocked or not lockedRole then return end
     local targetPos = GetTargetPosition()
     if not targetPos then return end
     local currentPos = CurrentCamera.CFrame.Position
-    local newCFrame = CFrame.new(currentPos, targetPos)
-    CurrentCamera.CFrame = CurrentCamera.CFrame:Lerp(newCFrame, 0.25)
+    CurrentCamera.CFrame = CFrame.new(currentPos, targetPos) -- Мгновенная фиксация
 end
 
+-- Основной цикл обновления
 local function Update()
     if isSpectating then
         UpdateSpectate()
@@ -517,7 +523,7 @@ local function Update()
     end
 end
 
--- Автообновление и инициализация
+-- Автообновление ролей
 local function AutoUpdate()
     while true do
         UpdateRoles()
@@ -525,9 +531,11 @@ local function AutoUpdate()
     end
 end
 
+-- Инициализация
 coroutine.wrap(AutoUpdate)()
 cameraConnection = RunService.RenderStepped:Connect(Update)
 
+-- Очистка при выходе
 LocalPlayer.AncestryChanged:Connect(function()
     if not LocalPlayer.Parent and cameraConnection then
         cameraConnection:Disconnect()
@@ -536,6 +544,7 @@ LocalPlayer.AncestryChanged:Connect(function()
     end
 end)
 
+-- Первоначальное обновление
 UpdateRoles()
 
 Tabs.CombatTab:Section({Title = "Innocent"})
