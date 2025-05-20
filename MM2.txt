@@ -889,6 +889,21 @@ local function ScanForGunDrops()
     end
 end
 
+-- Функция экипировки оружия
+local function EquipGun()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Gun") then
+        return true
+    end
+
+    local gun = LocalPlayer.Backpack:FindFirstChild("Gun")
+    if gun then
+        gun.Parent = LocalPlayer.Character
+        task.wait(0.1)
+        return LocalPlayer.Character:FindFirstChild("Gun") ~= nil
+    end
+    return false
+end
+
 -- Функция GrabGun
 local function GrabGun(gunDrop)
     if not gunDrop then
@@ -1343,21 +1358,42 @@ task.spawn(function()
     end
 end)
 
-
 -- Murder Tab
 
-
-
--- Sheriff Tab-- Добавляем в Sheriff Tab
+-- Sheriff Tab
 local sheriffShootVariants = {"Shoot", "Equip + Shoot", "Tp + Shoot", "Tp + Equip + Shoot"}
 local selectedSheriffShootVariant = "Shoot"
-local showShootButton = false
-local shootButton = nil
 
--- Функция создания кнопки
+Tabs.SheriffTab:Section({Title = gradient("Shoot Functions", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9"))})
+
+-- Dropdown для выбора варианта
+Tabs.SheriffTab:Dropdown({
+    Title = "Shoot Variant",
+    Values = sheriffShootVariants,
+    Value = selectedSheriffShootVariant,
+    Callback = function(value)
+        selectedSheriffShootVariant = value
+        WindUI:Notify({
+            Title = "Shoot Mode",
+            Content = "Selected: "..value,
+            Icon = "check-circle",
+            Duration = 2
+        })
+    end
+})
+
+local shootButtonEnabled = false
+local shootButtonGui = nil
+
+-- Функция создания кнопки стрельбы
 local function createShootButton()
-    if shootButton then shootButton:Destroy() end
+    -- Удаляем старую кнопку если есть
+    if shootButtonGui then 
+        shootButtonGui:Destroy() 
+        shootButtonGui = nil
+    end
     
+    local player = Players.LocalPlayer
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "ShootButtonGui"
     ScreenGui.Parent = player:WaitForChild("PlayerGui")
@@ -1427,7 +1463,7 @@ local function createShootButton()
         end
     end)
 
-    -- Click animation
+    -- Click animation and shoot function
     local function onClick()
         Button.Text = "SHOTING"
         Button.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -1459,162 +1495,141 @@ local function createShootButton()
         tweenUp:Play()
     end)
 
-    shootButton = ScreenGui
+    shootButtonGui = ScreenGui
     return ScreenGui
 end
 
 -- Функция удаления кнопки
 local function removeShootButton()
-    if shootButton then
-        shootButton:Destroy()
-        shootButton = nil
+    if shootButtonGui then
+        shootButtonGui:Destroy()
+        shootButtonGui = nil
     end
 end
 
-local shootButton = WindUI:Button({
-    Title = "Shoot Murderer",
-    Position = UDim2.new(0.5, -75, 0.5, 0), -- Center of the screen
-    Size = UDim2.new(0, 150, 0, 50),
-    Enabled = true,
-    Callback = function()
-        ShootMurderer()
-    end
-})
-
-shootButton:Hide()
-
-local function updateToggleButtonText(buttonInstance, isVisible)
-    if isVisible then
-        buttonInstance:SetTitle("Hide Shoot Button")
-    else
-        buttonInstance:SetTitle("Show Shoot Button")
-    end
-end
-
--- Создаем кнопку для переключения видимости
-Tabs.AimbotTab:Button({
-    Title = "Show Shoot Button", -- Начальный текст кнопки
-    Callback = function(buttonInstance) -- WindUI передает экземпляр кнопки в колбэк
-        if shootButton.Visible then
-            shootButton:Hide()
-            updateToggleButtonText(buttonInstance, false)
-        else
-            shootButton:Show()
-            updateToggleButtonText(buttonInstance, true)
-        end
-    end
-})
-
--- Dropdown для выбора варианта стрельбы
-Tabs.SheriffTab:Dropdown({
-    Title = "Shoot Variant",
-    Values = sheriffShootVariants,
-    Value = selectedSheriffShootVariant,
-    Callback = function(value)
-        selectedSheriffShootVariant = value
+-- Функция переключения кнопки
+local function toggleShootButton()
+    shootButtonEnabled = not shootButtonEnabled
+    if shootButtonEnabled then
+        createShootButton()
         WindUI:Notify({
-            Title = "Shoot Mode",
-            Content = "Selected: "..value,
+            Title = "Shoot Button",
+            Content = "Shoot button enabled!",
+            Icon = "check-circle",
+            Duration = 2
+        })
+    else
+        removeShootButton()
+        WindUI:Notify({
+            Title = "Shoot Button",
+            Content = "Shoot button disabled",
             Icon = "check-circle",
             Duration = 2
         })
     end
+end
+
+-- Добавляем кнопку в Sheriff Tab для управления видимостью
+Tabs.SheriffTab:Button({
+    Title = "Toggle Shoot Button",
+    Callback = toggleShootButton
 })
 
--- Функция вариативной стрельбы (обновленная)
-local function VariableShootMurderer()
-    -- Получаем данные об убийце
-    local roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-    local murderer = nil
-    
-    for name, data in pairs(roles) do
-        if data.Role == "Murderer" then
-            murderer = Players:FindFirstChild(name)
-            break
+Tabs.SheriffTab:Button({
+    Title = "Shoot Murderer",
+    Callback = function()
+        -- Получаем данные об убийце
+        local roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+        local murderer = nil
+        
+        for name, data in pairs(roles) do
+            if data.Role == "Murderer" then
+                murderer = Players:FindFirstChild(name)
+                break
+            end
         end
-    end
-    
-    -- Проверка убийцы
-    if not murderer or not murderer.Character then
-        WindUI:Notify({
-            Title = "Error",
-            Content = "Murderer not found!",
-            Icon = "x-circle",
-            Duration = 3
-        })
-        return
-    end
-
-    -- Обработка выбранного варианта
-    if selectedSheriffShootVariant == "Equip + Shoot" or selectedSheriffShootVariant == "Tp + Equip + Shoot" then
-        if not EquipGun() then
+        
+        -- Проверка убийцы
+        if not murderer or not murderer.Character then
             WindUI:Notify({
                 Title = "Error",
-                Content = "Gun not found in backpack!",
+                Content = "Murderer not found!",
                 Icon = "x-circle",
                 Duration = 3
             })
             return
         end
-    end
 
-    if selectedSheriffShootVariant == "Tp + Shoot" or selectedSheriffShootVariant == "Tp + Equip + Shoot" then
-        local targetRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
-        local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if targetRoot and localRoot then
-            localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -4)
-            task.wait(0.3)
+        -- Обработка выбранного варианта
+        if selectedSheriffShootVariant == "Equip + Shoot" or selectedSheriffShootVariant == "Tp + Equip + Shoot" then
+            if not EquipGun() then
+                WindUI:Notify({
+                    Title = "Error",
+                    Content = "Gun not found in backpack!",
+                    Icon = "x-circle",
+                    Duration = 3
+                })
+                return
+            end
+        end
+
+        if selectedSheriffShootVariant == "Tp + Shoot" or selectedSheriffShootVariant == "Tp + Equip + Shoot" then
+            local targetRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
+            local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot and localRoot then
+                localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -4)
+                task.wait(0.3)
+            end
+        end
+
+        -- Проверяем оружие в руках
+        local gun = LocalPlayer.Character:FindFirstChild("Gun")
+        if not gun then
+            WindUI:Notify({
+                Title = "Error",
+                Content = "Gun not equipped!",
+                Icon = "x-circle",
+                Duration = 3
+            })
+            return
+        end
+
+        -- Точный выстрел
+        local targetPart = murderer.Character:FindFirstChild("HumanoidRootPart") or murderer.Character:FindFirstChild("Head")
+        if not targetPart then return end
+
+        local args = {
+            [1] = 1,
+            [2] = targetPart.Position,
+            [3] = "AH2"
+        }
+        
+        if gun:FindFirstChild("KnifeLocal") and gun.KnifeLocal:FindFirstChild("CreateBeam") then
+            gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(unpack(args))
+            WindUI:Notify({
+                Title = "Success",
+                Content = "Shot fired using mode: "..selectedSheriffShootVariant,
+                Icon = "check-circle",
+                Duration = 3
+            })
         end
     end
+})
 
-    -- Проверяем оружие в руках
-    local gun = LocalPlayer.Character:FindFirstChild("Gun")
-    if not gun then
-        WindUI:Notify({
-            Title = "Error",
-            Content = "Gun not equipped!",
-            Icon = "x-circle",
-            Duration = 3
-        })
-        return
+Tabs.SheriffTab:Toggle({
+    Title = "Auto Shoot Murderer",
+    Default = false,
+    Callback = function(state)
+        if state then
+            WindUI:Notify({
+                Title = "Info",
+                Content = "Auto Shoot will use selected mode: "..selectedSheriffShootVariant,
+                Icon = "info",
+                Duration = 3
+            })
+        end
     end
-
-    -- Точный выстрел
-    local targetPart = murderer.Character:FindFirstChild("HumanoidRootPart") or murderer.Character:FindFirstChild("Head")
-    if not targetPart then return end
-
-    local args = {
-        [1] = 1,
-        [2] = targetPart.Position,
-        [3] = "AH2"
-    }
-    
-    if gun:FindFirstChild("KnifeLocal") and gun.KnifeLocal:FindFirstChild("CreateBeam") then
-        gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(unpack(args))
-        WindUI:Notify({
-            Title = "Success",
-            Content = "Shot fired using mode: "..selectedSheriffShootVariant,
-            Icon = "check-circle",
-            Duration = 3
-        })
-    end
-end
-
--- Функция экипировки оружия
-local function EquipGun()
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Gun") then
-        return true
-    end
-
-    local gun = LocalPlayer.Backpack:FindFirstChild("Gun")
-    if gun then
-        gun.Parent = LocalPlayer.Character
-        task.wait(0.1)
-        return LocalPlayer.Character:FindFirstChild("Gun") ~= nil
-    end
-    return false
-end
-
+})
 
 -- Settings
 local Settings = {
