@@ -1471,28 +1471,38 @@ local function removeShootButton()
     end
 end
 
--- Добавляем тоггл в Sheriff Tab
-Tabs.SheriffTab:Toggle({
-    Title = "Show Shoot Button",
-    Default = false,
-    Callback = function(state)
-        showShootButton = state
-        if state then
-            createShootButton()
-            WindUI:Notify({
-                Title = "Shoot Button",
-                Content = "Shoot button enabled!",
-                Icon = "check-circle",
-                Duration = 2
-            })
+local shootButton = WindUI:Button({
+    Title = "Shoot Murderer",
+    Position = UDim2.new(0.5, -75, 0.5, 0), -- Center of the screen
+    Size = UDim2.new(0, 150, 0, 50),
+    Enabled = true,
+    Callback = function()
+        ShootMurderer()
+    end
+})
+
+-- Изначально скрываем кнопку при запуске, если вы хотите, чтобы она была по умолчанию скрыта.
+-- Если вы хотите, чтобы она была по умолчанию видна, удалите эту строку.
+shootButton:Hide()
+
+local function updateToggleButtonText(buttonInstance, isVisible)
+    if isVisible then
+        buttonInstance:SetTitle("Hide Shoot Button")
+    else
+        buttonInstance:SetTitle("Show Shoot Button")
+    end
+end
+
+-- Создаем кнопку для переключения видимости
+Tabs.AimbotTab:Button({
+    Title = "Show Shoot Button", -- Начальный текст кнопки
+    Callback = function(buttonInstance) -- WindUI передает экземпляр кнопки в колбэк
+        if shootButton.Visible then
+            shootButton:Hide()
+            updateToggleButtonText(buttonInstance, false)
         else
-            removeShootButton()
-            WindUI:Notify({
-                Title = "Shoot Button",
-                Content = "Shoot button disabled",
-                Icon = "check-circle",
-                Duration = 2
-            })
+            shootButton:Show()
+            updateToggleButtonText(buttonInstance, true)
         end
     end
 })
