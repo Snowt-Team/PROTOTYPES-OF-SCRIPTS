@@ -1288,12 +1288,13 @@ end
 
 -- Murder Tab UI
 Tabs.MurderTab:Section({
-    Title = gradient("Targeted Kill", Color3.fromHex("#e80909"), Color3.fromHex("#630404"))
+    Title = gradient("Kill Functions", Color3.fromHex("#e80909"), Color3.fromHex("#630404"))
 })
 
-Tabs.MurderTab:Button({
-    Title = "Kill Sheriff/Hero/Innocent",
-    Callback = function()
+Tabs.MurderTab:Toggle({
+    Title = "Kill All",
+    Default = false,
+    Callback = function(killActive)
         if killActive then
             stopKilling()
         else
@@ -1337,17 +1338,15 @@ Tabs.MurderTab:Button({
         end
     end
 })
-
--- Sheriff Tab Implementation
+-- Sheriff Tab Implementation (updated shot button)
 local shotButton = nil
 local shotButtonFrame = nil
 local shotButtonActive = false
 local shotType = "Default"
 local buttonSize = 50
 local isDragging = false
-local dragStartPos, buttonStartPos
 
--- Функция для создания кнопки выстрела
+-- Функция для создания кнопки выстрела с улучшенным дизайном
 local function CreateShotButton()
     if shotButton then 
         shotButton:Destroy()
@@ -1363,7 +1362,7 @@ local function CreateShotButton()
     screenGui.Name = "WindUI_SheriffGui"
     screenGui.Parent = game:GetService("CoreGui")
     screenGui.ResetOnSpawn = false
-    screenGui.DisplayOrder = 999 -- Высокий приоритет
+    screenGui.DisplayOrder = 999
     
     -- Создаем Frame для кнопки
     shotButtonFrame = Instance.new("Frame")
@@ -1374,13 +1373,13 @@ local function CreateShotButton()
     shotButtonFrame.BackgroundTransparency = 1
     shotButtonFrame.ZIndex = 100
     
-    -- Создаем кнопку
+    -- Создаем кнопку с новым дизайном
     shotButton = Instance.new("TextButton")
     shotButton.Name = "SheriffShotButton"
     shotButton.Size = UDim2.new(1, 0, 1, 0)
-    shotButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    shotButton.BackgroundTransparency = 0.3
-    shotButton.TextColor3 = Color3.fromRGB(0, 30, 128)
+    shotButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Серый фон
+    shotButton.BackgroundTransparency = 0.2
+    shotButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- Белый текст
     shotButton.Text = "SHOT"
     shotButton.TextSize = 14
     shotButton.Font = Enum.Font.GothamBold
@@ -1388,10 +1387,11 @@ local function CreateShotButton()
     shotButton.ZIndex = 101
     shotButton.AutoButtonColor = false
     
-    -- Обводка
+    -- Темно-синяя обводка
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(0, 30, 128)
+    stroke.Color = Color3.fromRGB(0, 30, 128) -- Темно-синий цвет
     stroke.Thickness = 2
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Parent = shotButton
     
     -- Закругленные углы
@@ -1399,99 +1399,125 @@ local function CreateShotButton()
     corner.CornerRadius = UDim.new(0.2, 0)
     corner.Parent = shotButton
     
-    -- Анимация нажатия
+    -- Тень для кнопки
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.Size = UDim2.new(1, 10, 1, 10)
+    shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+    shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://1316045217"
+    shadow.ImageColor3 = Color3.new(0, 0, 0)
+    shadow.ImageTransparency = 0.8
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+    shadow.ZIndex = 100
+    shadow.Parent = shotButton
+    
+    -- Улучшенная анимация нажатия
     local function animatePress()
-        game:GetService("TweenService"):Create(
+        local tweenService = game:GetService("TweenService")
+        
+        -- Анимация уменьшения и изменения цвета при нажатии
+        local pressDown = tweenService:Create(
             shotButton,
             TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {BackgroundTransparency = 0.1, TextColor3 = Color3.fromRGB(255, 255, 255)}
-        ):Play()
-        
-        task.wait(0)
-        
-        game:GetService("TweenService"):Create(
-            shotButton,
-            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {BackgroundTransparency = 0.3, TextColor3 = Color3.fromRGB(0, 30, 128)}
-        ):Play()
-    end
-    
-shotButton.MouseButton1Click:Connect(function()
-        animatePress()
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
-
-        return
-    end
-
-    -- Получаем данные об убийце
-    local success, roles = pcall(function()
-        return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-    end)
-    
-    if not success or not roles then
-
-        return
-    end
-
-    local murderer = nil
-    for name, data in pairs(roles) do
-        if data.Role == "Murderer" then
-            murderer = Players:FindFirstChild(name)
-            break
-        end
-    end
-
-    -- Проверка убийцы
-    if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Humanoid") or murderer.Character.Humanoid.Health <= 0 then
-
-        return
-    end
-
-    -- Проверяем оружие
-    local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
-    
-    -- Если выбран режим Default, но оружия нет
-    if shotType == "Default" and not gun then
-        
-        return
-    end
-
-    -- Экипировка оружия если нужно
-    if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
-        gun.Parent = LocalPlayer.Character
-        task.wait(0) -- Небольшая задержка для экипировки
-    end
-
-    -- Телепорт если выбран режим Teleport
-    if shotType == "Teleport" then
-        local targetRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
-        local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        
-        if targetRoot and localRoot then
-            localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -4)
-            task.wait(0) -- Небольшая задержка после телепорта
-        end
-    end
-
-    -- Выстрел
-    if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
-        gun.Parent = LocalPlayer.Character
-        task.wait(0.1) -- Небольшая задержка для экипировки
-    end
-    gun = LocalPlayer.Character:FindFirstChild("Gun")
-    if gun and gun:FindFirstChild("KnifeLocal") then
-        local targetPart = murderer.Character:FindFirstChild("HumanoidRootPart")
-        
-        if targetPart then
-            local args = {
-                [1] = 1,
-                [2] = targetPart.Position,
-                [3] = "AH2"
+            {
+                Size = UDim2.new(0.9, 0, 0.9, 0),
+                BackgroundColor3 = Color3.fromRGB(70, 70, 70),
+                TextColor3 = Color3.fromRGB(200, 200, 255)
             }
-            
-            gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(unpack(args))
-        end
+        )
+        
+        -- Анимация возврата к исходному состоянию
+        local pressUp = tweenService:Create(
+            shotButton,
+            TweenInfo.new(0.2, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
+            {
+                Size = UDim2.new(1, 0, 1, 0),
+                BackgroundColor3 = Color3.fromRGB(100, 100, 100),
+                TextColor3 = Color3.fromRGB(255, 255, 255)
+            }
+        )
+        
+        pressDown:Play()
+        pressDown.Completed:Wait()
+        pressUp:Play()
     end
+    
+    shotButton.MouseButton1Click:Connect(function()
+        animatePress()
+        -- Остальная логика выстрела остается без изменений
+        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
+            return
+        end
+
+        -- Получаем данные об убийце
+        local success, roles = pcall(function()
+            return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+        end)
+        
+        if not success or not roles then
+            return
+        end
+
+        local murderer = nil
+        for name, data in pairs(roles) do
+            if data.Role == "Murderer" then
+                murderer = Players:FindFirstChild(name)
+                break
+            end
+        end
+
+        -- Проверка убийцы
+        if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Humanoid") or murderer.Character.Humanoid.Health <= 0 then
+            return
+        end
+
+        -- Проверяем оружие
+        local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+        
+        -- Если выбран режим Default, но оружия нет
+        if shotType == "Default" and not gun then
+            return
+        end
+
+        -- Экипировка оружия если нужно
+        if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
+            gun.Parent = LocalPlayer.Character
+            task.wait(0)
+        end
+
+        -- Телепорт если выбран режим Teleport
+        if shotType == "Teleport" then
+            local targetRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
+            local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if targetRoot and localRoot then
+                localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -4)
+                task.wait(0)
+            end
+        end
+
+        -- Выстрел
+        if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
+            gun.Parent = LocalPlayer.Character
+            task.wait(0)
+        end
+        gun = LocalPlayer.Character:FindFirstChild("Gun")
+        if gun and gun:FindFirstChild("KnifeLocal") then
+            local targetPart = murderer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if targetPart then
+                local args = {
+                    [1] = 1,
+                    [2] = targetPart.Position,
+                    [3] = "AH2"
+                }
+                
+                gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(unpack(args))
+            end
+        end
     end)
 
     -- Обработчики для перемещения кнопки
@@ -1547,6 +1573,7 @@ shotButton.MouseButton1Click:Connect(function()
         Duration = 3
     })
 end
+
 
 local function RemoveShotButton()
     if shotButton then
