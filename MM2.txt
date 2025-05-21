@@ -1221,7 +1221,81 @@ local function CreateShotButton()
 shotButton.MouseButton1Click:Connect(function()
         print("Work")
         animatePress()
-        ShootMurderer()
+            -- Проверяем, жив ли игрок
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
+
+        return
+    end
+
+    -- Получаем данные об убийце
+    local success, roles = pcall(function()
+        return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    end)
+    
+    if not success or not roles then
+
+        return
+    end
+
+    local murderer = nil
+    for name, data in pairs(roles) do
+        if data.Role == "Murderer" then
+            murderer = Players:FindFirstChild(name)
+            break
+        end
+    end
+
+    -- Проверка убийцы
+    if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Humanoid") or murderer.Character.Humanoid.Health <= 0 then
+
+        return
+    end
+
+    -- Проверяем оружие
+    local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+    
+    -- Если выбран режим Default, но оружия нет
+    if shotType == "Default" and not gun then
+        
+        return
+    end
+
+    -- Экипировка оружия если нужно
+    if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
+        gun.Parent = LocalPlayer.Character
+        task.wait(0.1) -- Небольшая задержка для экипировки
+    end
+
+    -- Телепорт если выбран режим Teleport
+    if shotType == "Teleport" then
+        local targetRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
+        local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        
+        if targetRoot and localRoot then
+            localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -4)
+            task.wait(0.1) -- Небольшая задержка после телепорта
+        end
+    end
+
+    -- Выстрел
+    if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
+        gun.Parent = LocalPlayer.Character
+        task.wait(0.1) -- Небольшая задержка для экипировки
+    end
+    gun = LocalPlayer.Character:FindFirstChild("Gun")
+    if gun and gun:FindFirstChild("KnifeLocal") then
+        local targetPart = murderer.Character:FindFirstChild("HumanoidRootPart")
+        
+        if targetPart then
+            local args = {
+                [1] = 1,
+                [2] = targetPart.Position,
+                [3] = "AH2"
+            }
+            
+            gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(unpack(args))
+        end
+    end
     end)
 
     -- Обработчики для перемещения кнопки
