@@ -1136,7 +1136,188 @@ task.spawn(function()
     end
 end)
 
--- Murder Tab
+-- Murder Tab Implementation
+local killAllActive = false
+local killAllConnection = nil
+local teleportDelay = 0.5 -- задержка между телепортациями в секундах
+local attackedPlayers = {} -- таблица для отслеживания атакованных игроков
+
+local function equipKnife()
+    local character = LocalPlayer.Character
+    if not character then return false end
+    
+    -- Проверяем, есть ли нож в руках
+    if character:FindFirstChild("Knife") then
+        return true
+    end
+    
+    -- Проверяем, есть ли нож в инвентаре
+    local knife = LocalPlayer.Backpack:FindFirstChild("Knife")
+    if knife then
+        knife.Parent = character
+        task.wait(0.2) -- небольшая задержка для экипировки
+        return character:FindFirstChild("Knife") ~= nil
+    end
+    
+    return false
+end
+
+local function attackPlayer(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then return end
+    
+    -- Экипируем нож если его нет
+    if not equipKnife() then
+        WindUI:Notify({
+            Title = "Kill All",
+            Content = "No knife found!",
+            Icon = "x-circle",
+            Duration = 2
+        })
+        return
+    end
+    
+    -- Телепортируемся к игроку
+    local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if targetRoot and localRoot then
+        localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -2) -- Телепорт на 2 метра перед игроком
+        task.wait(0.1) -- небольшая задержка после телепорта
+    end
+    
+    -- Атакуем ножом
+    local knife = LocalPlayer.Character:FindFirstChild("Knife")
+    if knife and knife:FindFirstChild("Stab") then
+        local args = {
+            [1] = "Down"
+        }
+        knife.Stab:FireServer(unpack(args))
+        
+        WindUI:Notify({
+            Title = "Kill All",
+            Content = "Attacked "..targetPlayer.Name,
+            Icon = "check-circle",
+            Duration = 1
+        })
+    end
+end
+
+local function killAllPlayers()
+    if killAllActive then return end
+    
+    killAllActive = true
+    attackedPlayers = {} -- очищаем список атакованных
+    
+    WindUI:Notify({
+        Title = "Kill All",
+        Content = "Starting kill sequence...",
+        Icon = "alert-circle",
+        Duration = 2
+    })
+    
+    local function processNextPlayer()
+        local validPlayers = {}
+        for _, player in ipairs(Players:GetPlayers()) do
+            -- Игроки, которых еще не атаковали и которые живы
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and 
+               player.Character.Humanoid.Health > 0 and not attackedPlayers[player] then
+                table.insert(validPlayers, player)
+            end
+        end
+        
+        if #validPlayers == 0 then
+            WindUI:Notify({
+                Title = "Kill All",
+                Content = "All players processed!",
+                Icon = "check-circle",
+                Duration = 3
+            })
+            killAllActive = false
+            if killAllConnection then
+                killAllConnection:Disconnect()
+                killAllConnection = nil
+            end
+            return
+        end
+        
+        -- Выбираем случайного игрока из оставшихся
+        local targetPlayer = validPlayers[math.random(1, #validPlayers)]
+        attackedPlayers[targetPlayer] = true -- помечаем как атакованного
+        
+        attackPlayer(targetPlayer)
+        
+        -- Планируем следующую атаку через задержку
+        task.delay(teleportDelay, processNextPlayer)
+    end
+    
+    -- Начинаем процесс
+    processNextPlayer()
+end
+
+local function stopKillAll()
+    killAllActive = false
+    if killAllConnection then
+        killAllConnection:Disconnect()
+        killAllConnection = nil
+    end
+    WindUI:Notify({
+        Title = "Kill All",
+        Content = "Kill sequence stopped",
+        Icon = "x-circle",
+        Duration = 2
+    })
+end
+
+-- Murder Tab UI
+Tabs.MurderTab:Section({
+    Title = gradient("Kill Functions", Color3.fromHex("#e80909"), Color3.fromHex("#630404"))
+})
+
+Tabs.MurderTab:Button({
+    Title = "Kill All Players",
+    Callback = function()
+        if killAllActive then
+            stopKillAll()
+        else
+            killAllPlayers()
+        end
+    end
+})
+
+Tabs.MurderTab:Slider({
+    Title = "Teleport Delay",
+    Step = 0.1,
+    Value = {Min = 0.1, Max = 2, Default = 0.5},
+    Callback = function(value)
+        teleportDelay = value
+        WindUI:Notify({
+            Title = "Kill All",
+            Content = "Delay set to "..value.."s",
+            Icon = "check-circle",
+            Duration = 2
+        })
+    end
+})
+
+Tabs.MurderTab:Button({
+    Title = "Equip Knife",
+    Callback = function()
+        if equipKnife() then
+            WindUI:Notify({
+                Title = "Knife",
+                Content = "Knife equipped!",
+                Icon = "check-circle",
+                Duration = 2
+            })
+        else
+            WindUI:Notify({
+                Title = "Knife",
+                Content = "No knife found!",
+                Icon = "x-circle",
+                Duration = 2
+            })
+        end
+    end
+})
 
 
 
@@ -1209,7 +1390,7 @@ local function CreateShotButton()
             {BackgroundTransparency = 0.1, TextColor3 = Color3.fromRGB(255, 255, 255)}
         ):Play()
         
-        task.wait(0.1)
+        task.wait(0)
         
         game:GetService("TweenService"):Create(
             shotButton,
@@ -1219,9 +1400,7 @@ local function CreateShotButton()
     end
     
 shotButton.MouseButton1Click:Connect(function()
-        print("Work")
         animatePress()
-            -- Проверяем, жив ли игрок
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
 
         return
@@ -1263,7 +1442,7 @@ shotButton.MouseButton1Click:Connect(function()
     -- Экипировка оружия если нужно
     if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
         gun.Parent = LocalPlayer.Character
-        task.wait(0.1) -- Небольшая задержка для экипировки
+        task.wait(0) -- Небольшая задержка для экипировки
     end
 
     -- Телепорт если выбран режим Teleport
@@ -1273,7 +1452,7 @@ shotButton.MouseButton1Click:Connect(function()
         
         if targetRoot and localRoot then
             localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -4)
-            task.wait(0.1) -- Небольшая задержка после телепорта
+            task.wait(0) -- Небольшая задержка после телепорта
         end
     end
 
