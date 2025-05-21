@@ -189,529 +189,332 @@ Tabs.CharacterTab:Toggle({
     end
 })
 
--- WindUI and other existing code remains unchanged until the ESP section
-
 -- ESP
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LP = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
-local Workspace = game:GetService("Workspace")
 
+-- Конфигурация ESP
 local ESPConfig = {
-    Enabled = false, -- Master toggle for all ESP features
-    Murderer = { Highlight = false, Tracers = false, Boxes = false, Names = false, Color = Color3.fromRGB(255, 0, 0) },
-    Innocent = { Highlight = false, Tracers = false, Boxes = false, Names = false, Color = Color3.fromRGB(0, 255, 0) },
-    Sheriff = { Highlight = false, Tracers = false, Boxes = false, Names = false, Color = Color3.fromRGB(0, 0, 255) },
-    Hero = { Highlight = false, Tracers = false, Boxes = false, Names = false, Color = Color3.fromRGB(255, 255, 0) },
-    GunDrop = { Highlight = false, Tracers = false, Boxes = false, Names = false, Color = Color3.fromRGB(255, 215, 0) }
+    HighlightMurderer = false,
+    HighlightInnocent = false,
+    HighlightSheriff = false,
+    NameESPMurderer = false,
+    NameESPInnocent = false,
+    NameESPSheriff = false,
+    LineESP = false
 }
 
-local ESPObjects = {
-    Highlights = {},
-    Tracers = {},
-    Boxes = {},
-    Names = {}
-}
+-- Переменные для ролей (предполагается, что они определены в вашем скрипте)
+local Murder, Sheriff, Hero = nil, nil, nil
 
-local mapPaths = {
-    "ResearchFacility", "Hospital3", "MilBase", "House2",
-    "Workplace", "Mansion2", "BioLab", "Hotel",
-    "Factory", "Bank2", "PoliceStation"
-}
+-- Таблица для BillboardGui (имена)
+local NameESPBillboards = {}
+-- Таблица для линий
+local LineESPConnections = {}
 
-local Murder, Sheriff, Hero
-local roles = {}
-
--- Helper function to get player role
-local function getPlayerRole(player)
-    for name, data in pairs(roles) do
-        if player.Name == name then
-            return data.Role
-        end
-    end
-    return nil
+-- Функция проверки, жив ли игрок
+local function IsAlive(player)
+    return player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0
 end
 
--- Create Highlight
-local function CreateHighlight(target, config, isGunDrop)
-    local id = isGunDrop and tostring(target) or target
-    if not ESPObjects.Highlights[id] and (isGunDrop or (target.Character and target.Character:FindFirstChild("HumanoidRootPart"))) then
-        local highlight = Instance.new("Highlight")
-        highlight.Name = isGunDrop and "GunDropHighlight" or "PlayerHighlight"
-        highlight.Adornee = isGunDrop and target or target.Character
+-- Функция создания подсветки
+local function CreateHighlight(player)
+    local highlight = player.Character:FindFirstChild("Highlight")
+    if not highlight then
+        highlight = Instance.new("Highlight")
+        highlight.Parent = player.Character
+        highlight.Adornee = player.Character
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlight.FillColor = config.Color
-        highlight.OutlineColor = config.Color
-        highlight.FillTransparency = 0.6
-        highlight.OutlineTransparency = 0
-        highlight.Enabled = config.Highlight and ESPConfig.Enabled
-        highlight.Parent = isGunDrop and target or target.Character
-        ESPObjects.Highlights[id] = highlight
     end
+    return highlight
 end
 
--- Create Tracer
-local function CreateTracer(target, config, isGunDrop)
-    local id = isGunDrop and tostring(target) or target
-    if not ESPObjects.Tracers[id] and (isGunDrop or (target.Character and target.Character:FindFirstChild("HumanoidRootPart"))) then
-        local tracer = Instance.new("LineHandleAdornment")
-        tracer.Name = isGunDrop and "GunDropTracer" or "PlayerTracer"
-        tracer.Color3 = config.Color
-        tracer.Transparency = 0.2
-        tracer.Thickness = 3
-        tracer.Length = 1000 -- Will be adjusted dynamically
-        tracer.Parent = CoreGui
-        ESPObjects.Tracers[id] = tracer
-    end
-end
-
--- Create Box
-local function CreateBox(target, config, isGunDrop)
-    local id = isGunDrop and tostring(target) or target
-    if not ESPObjects.Boxes[id] and (isGunDrop or (target.Character and target.Character:FindFirstChild("HumanoidRootPart"))) then
-        local box = Instance.new("BoxHandleAdornment")
-        box.Name = isGunDrop and "GunDropBox" or "PlayerBox"
-        box.Adornee = isGunDrop and target or target.Character:FindFirstChild("HumanoidRootPart")
-        box.Size = isGunDrop and Vector3.new(2.5, 2.5, 2.5) or Vector3.new(4.5, 6.5, 4.5)
-        box.Color3 = config.Color
-        box.Transparency = 0.4
-        box.AlwaysOnTop = true
-        box.ZIndex = 10
-        box.Parent = isGunDrop and target or target.Character
-        ESPObjects.Boxes[id] = box
-    end
-end
-
--- Create Name
-local function CreateName(target, config, isGunDrop)
-    local id = isGunDrop and tostring(target) or target
-    if not ESPObjects.Names[id] and (isGunDrop or (target.Character and target.Character:FindFirstChild("Head"))) then
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = isGunDrop and "GunDropName" or "PlayerName"
-        billboard.Adornee = isGunDrop and target or target.Character:FindFirstChild("Head")
-        billboard.Size = UDim2.new(0, 120, 0, 40)
-        billboard.StudsOffset = isGunDrop and Vector3.new(0, 2.5, 0) or Vector3.new(0, 3.5, 0)
+-- Функция обновления ESP имен
+local function UpdateNameESP(player)
+    local character = player.Character
+    if not character then return end
+    
+    local head = character:FindFirstChild("Head")
+    if not head then return end
+    
+    local billboard = NameESPBillboards[player]
+    if not billboard then
+        billboard = Instance.new("BillboardGui")
+        billboard.Name = "NameESP"
+        billboard.Parent = head
+        billboard.Adornee = head
         billboard.AlwaysOnTop = true
-        billboard.Enabled = config.Names and ESPConfig.Enabled
-
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, 0, 1, 0)
-        nameLabel.BackgroundTransparency = 0.7
-        nameLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        nameLabel.Text = isGunDrop and "GunDrop" or (target.Name .. " (" .. (getPlayerRole(target) or "Unknown") .. ")")
-        nameLabel.TextColor3 = config.Color
-        nameLabel.TextSize = 16
-        nameLabel.Font = Enum.Font.SourceSansBold
-        nameLabel.TextStrokeTransparency = 0.5
-        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        nameLabel.Parent = billboard
-
-        local uiCorner = Instance.new("UICorner")
-        uiCorner.CornerRadius = UDim.new(0, 4)
-        uiCorner.Parent = nameLabel
-
-        billboard.Parent = CoreGui
-        ESPObjects.Names[id] = billboard
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 2, 0)
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Parent = billboard
+        textLabel.BackgroundTransparency = 1
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.TextScaled = true
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.Text = ""
+        
+        NameESPBillboards[player] = billboard
+    end
+    
+    local textLabel = billboard:FindFirstChild("TextLabel")
+    if not textLabel then return end
+    
+    local shouldShow = false
+    local color = Color3.new(1, 1, 1)
+    local roleText = ""
+    
+    if player.Name == Murder and IsAlive(player) and ESPConfig.NameESPMurderer then
+        color = Color3.fromRGB(255, 0, 0)
+        roleText = "Убийца"
+        shouldShow = true
+    elseif player.Name == Sheriff and IsAlive(player) and ESPConfig.NameESPSheriff then
+        color = Color3.fromRGB(0, 0, 255)
+        roleText = "Шериф"
+        shouldShow = true
+    elseif ESPConfig.NameESPInnocent and IsAlive(player) and 
+           player.Name ~= Murder and player.Name ~= Sheriff and player.Name ~= Hero then
+        color = Color3.fromRGB(0, 255, 0)
+        roleText = "Невинный"
+        shouldShow = true
+    elseif player.Name == Hero and IsAlive(player) and not IsAlive(game.Players[Sheriff]) and ESPConfig.NameESPSheriff then
+        color = Color3.fromRGB(255, 250, 0)
+        roleText = "Герой"
+        shouldShow = true
+    end
+    
+    if shouldShow then
+        textLabel.Text = player.Name .. " (" .. roleText .. ")"
+        textLabel.TextColor3 = color
+        billboard.Enabled = true
+    else
+        billboard.Enabled = false
     end
 end
 
--- Remove ESP for a specific target
-local function RemoveESPForTarget(id)
-    if ESPObjects.Highlights[id] then
-        ESPObjects.Highlights[id]:Destroy()
-        ESPObjects.Highlights[id] = nil
-    end
-    if ESPObjects.Tracers[id] then
-        ESPObjects.Tracers[id]:Destroy()
-        ESPObjects.Tracers[id] = nil
-    end
-    if ESPObjects.Boxes[id] then
-        ESPObjects.Boxes[id]:Destroy()
-        ESPObjects.Boxes[id] = nil
-    end
-    if ESPObjects.Names[id] then
-        ESPObjects.Names[id]:Destroy()
-        ESPObjects.Names[id] = nil
-    end
-end
-
--- Update Tracer Positions (from target to local player)
-local function UpdateTracerPositions()
-    local localRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if not localRoot then return end
-    local localPos = localRoot.Position
-
-    for id, tracer in pairs(ESPObjects.Tracers) do
-        if tracer and tracer.Parent then
-            local target = (type(id) == "string") and Workspace:FindFirstChild(id, true) or (id.Character and id.Character:FindFirstChild("HumanoidRootPart"))
-            if target and target.Parent then
-                local targetPos = target.Position
-                local distance = (localPos - targetPos).Magnitude
-                tracer.Adornee = nil -- Unbind to prevent rendering issues
-                tracer.CFrame = CFrame.new(targetPos, localPos) * CFrame.new(0, 0, -distance / 2)
-                tracer.Length = distance
-                tracer.Adornee = target -- Rebind after positioning
-            else
-                RemoveESPForTarget(id)
-            end
-        end
-    end
-end
-
--- Update ESP
-local function UpdateESP()
-    if not ESPConfig.Enabled then
-        for id, _ in pairs(ESPObjects.Highlights) do
-            RemoveESPForTarget(id)
+-- Функция обновления линий
+local function UpdateLineESP(player)
+    if not ESPConfig.LineESP then
+        if LineESPConnections[player] then
+            LineESPConnections[player]:Destroy()
+            LineESPConnections[player] = nil
         end
         return
     end
-
-    -- Clean up invalid ESP objects
-    for id, _ in pairs(ESPObjects.Highlights) do
-        local target = (type(id) == "string") and Workspace:FindFirstChild(id, true) or id
-        if not target or (type(id) ~= "string" and (not id.Character or not IsAlive(id))) then
-            RemoveESPForTarget(id)
+    
+    local character = player.Character
+    if not character or not IsAlive(player) then
+        if LineESPConnections[player] then
+            LineESPConnections[player]:Destroy()
+            LineESPConnections[player] = nil
         end
+        return
     end
-
-    -- Update Player ESP
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character and IsAlive(player) then
-            local roleConfig = nil
-            if player.Name == Murder then
-                roleConfig = ESPConfig.Murderer
-            elseif player.Name == Sheriff then
-                roleConfig = ESPConfig.Sheriff
-            elseif player.Name == Hero and not IsAlive(game.Players[Sheriff]) then
-                roleConfig = ESPConfig.Hero
-            else
-                roleConfig = ESPConfig.Innocent
-            end
-
-            if roleConfig and (roleConfig.Highlight or roleConfig.Tracers or roleConfig.Boxes or roleConfig.Names) then
-                if roleConfig.Highlight then CreateHighlight(player, roleConfig, false) end
-                if roleConfig.Tracers then CreateTracer(player, roleConfig, false) end
-                if roleConfig.Boxes then CreateBox(player, roleConfig, false) end
-                if roleConfig.Names then CreateName(player, roleConfig, false) end
-            else
-                RemoveESPForTarget(player)
-            end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    local line = LineESPConnections[player]
+    if not line then
+        line = Drawing.new("Line")
+        line.Thickness = 2
+        line.Transparency = 1
+        LineESPConnections[player] = line
+    end
+    
+    local camera = workspace.CurrentCamera
+    local fromPos = camera.CFrame.Position
+    local toPos = rootPart.Position
+    
+    local fromScreen, fromVisible = camera:WorldToViewportPoint(fromPos)
+    local toScreen, toVisible = camera:WorldToViewportPoint(toPos)
+    
+    if toVisible then
+        line.From = Vector2.new(fromScreen.X, fromScreen.Y)
+        line.To = Vector2.new(toScreen.X, toScreen.Y)
+        
+        if player.Name == Murder then
+            line.Color = Color3.fromRGB(255, 0, 0)
+        elseif player.Name == Sheriff or (player.Name == Hero and not IsAlive(game.Players[Sheriff])) then
+            line.Color = Color3.fromRGB(0, 0, 255)
         else
-            RemoveESPForTarget(player)
+            line.Color = Color3.fromRGB(0, 255, 0)
         end
-    end
-
-    -- Update GunDrop ESP
-    for _, mapName in pairs(mapPaths) do
-        local map = Workspace:FindFirstChild(mapName)
-        if map then
-            local gunDrop = map:FindFirstChild("GunDrop")
-            if gunDrop and (ESPConfig.GunDrop.Highlight or ESPConfig.GunDrop.Tracers or ESPConfig.GunDrop.Boxes or ESPConfig.GunDrop.Names) then
-                local id = tostring(gunDrop)
-                if ESPConfig.GunDrop.Highlight then CreateHighlight(gunDrop, ESPConfig.GunDrop, true) end
-                if ESPConfig.GunDrop.Tracers then CreateTracer(gunDrop, ESPConfig.GunDrop, true) end
-                if ESPConfig.GunDrop.Boxes then CreateBox(gunDrop, ESPConfig.GunDrop, true) end
-                if ESPConfig.GunDrop.Names then CreateName(gunDrop, ESPConfig.GunDrop, true) end
-            elseif gunDrop then
-                RemoveESPForTarget(tostring(gunDrop))
-            end
-        end
-    end
-end
-
-function IsAlive(player)
-    for name, data in pairs(roles) do
-        if player.Name == name then
-            return not data.Killed and not data.Dead
-        end
-    end
-    return false
-end
-
-function UpdateRoles()
-    local success, result = pcall(function()
-        return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-    end)
-    if success then
-        roles = result or {}
-        Murder, Sheriff, Hero = nil, nil, nil
-        for name, data in pairs(roles) do
-            if data.Role == "Murderer" then Murder = name
-            elseif data.Role == "Sheriff" then Sheriff = name
-            elseif data.Role == "Hero" then Hero = name
-        end
-    end
-end
-end
-
--- Monitor GunDrops
-local function monitorGunDrops()
-    for _, mapName in pairs(mapPaths) do
-        local map = Workspace:FindFirstChild(mapName)
-        if map then
-            map.ChildAdded:Connect(function(child)
-                if child.Name == "GunDrop" then
-                    task.wait(0.5) -- Wait for object to load
-                    UpdateESP()
-                end
-            end)
-            map.ChildRemoved:Connect(function(child)
-                if child.Name == "GunDrop" then
-                    RemoveESPForTarget(tostring(child))
-                end
-            end)
-        end
-    end
-end
-
-monitorGunDrops()
-
--- ESP Tab UI
-Tabs.EspTab:Section({Title = gradient("ESP Controls", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2"))})
-Tabs.EspTab:Toggle({
-    Title = gradient("Enable All ESP", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Enabled = state
-        UpdateESP()
-        WindUI:Notify({
-            Title = "ESP",
-            Content = state and "All ESP features enabled" or "All ESP features disabled",
-            Icon = state and "check-circle" or "x-circle",
-            Duration = 2
-        })
-    end
-})
-
-Tabs.EspTab:Section({Title = gradient("Murderer ESP", Color3.fromHex("#e80909"), Color3.fromHex("#630404"))})
-Tabs.EspTab:Toggle({
-    Title = gradient("Highlight Murderer", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Murderer.Highlight = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Tracers Murderer", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Murderer.Tracers = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Boxes Murderer", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Murderer.Boxes = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Names Murderer", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Murderer.Names = state
-        UpdateESP()
-    end
-})
-
-Tabs.EspTab:Section({Title = gradient("Innocent ESP", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c"))})
-Tabs.EspTab:Toggle({
-    Title = gradient("Highlight Innocent", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Innocent.Highlight = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Tracers Innocent", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Innocent.Tracers = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Boxes Innocent", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Innocent.Boxes = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Names Innocent", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Innocent.Names = state
-        UpdateESP()
-    end
-})
-
-Tabs.EspTab:Section({Title = gradient("Sheriff ESP", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9"))})
-Tabs.EspTab:Toggle({
-    Title = gradient("Highlight Sheriff", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Sheriff.Highlight = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Tracers Sheriff", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Sheriff.Tracers = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Boxes Sheriff", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Sheriff.Boxes = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Names Sheriff", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Sheriff.Names = state
-        UpdateESP()
-    end
-})
-
-Tabs.EspTab:Section({Title = gradient("Hero ESP", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00"))})
-Tabs.EspTab:Toggle({
-    Title = gradient("Highlight Hero", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Hero.Highlight = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Tracers Hero", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Hero.Tracers = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Boxes Hero", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Hero.Boxes = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Names Hero", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.Hero.Names = state
-        UpdateESP()
-    end
-})
-
-Tabs.EspTab:Section({Title = gradient("GunDrop ESP", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00"))})
-Tabs.EspTab:Toggle({
-    Title = gradient("Highlight GunDrop", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.GunDrop.Highlight = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Tracers GunDrop", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.GunDrop.Tracers = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Boxes GunDrop", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.GunDrop.Boxes = state
-        UpdateESP()
-    end
-})
-Tabs.EspTab:Toggle({
-    Title = gradient("Names GunDrop", Color3.fromHex("#ffff00"), Color3.fromHex("#4f4f00")),
-    Default = false,
-    Callback = function(state)
-        ESPConfig.GunDrop.Names = state
-        UpdateESP()
-    end
-})
-
--- Update Connections
-local espConnection
-local function startESPUpdate()
-    if espConnection then
-        espConnection:Disconnect()
-    end
-    espConnection = RunService.RenderStepped:Connect(function()
-        UpdateRoles()
-        if ESPConfig.Enabled then
-            UpdateESP()
-            UpdateTracerPositions()
-        end
-    end)
-end
-
-startESPUpdate()
-
-Players.PlayerRemoving:Connect(function(player)
-    if player == LP then
-        if espConnection then
-            espConnection:Disconnect()
-        end
-        for id, _ in pairs(ESPObjects.Highlights) do
-            RemoveESPForTarget(id)
-        end
+        
+        line.Visible = true
     else
-        RemoveESPForTarget(player)
+        line.Visible = false
+    end
+end
+
+-- Функция обновления подсветки и имен
+local function UpdateHighlights()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LP and player.Character then
+            local highlight = player.Character:FindFirstChild("Highlight")
+            
+            if not (ESPConfig.HighlightMurderer or ESPConfig.HighlightInnocent or ESPConfig.HighlightSheriff) then
+                if highlight then
+                    highlight:Destroy()
+                end
+            else
+                local shouldHighlight = false
+                local color = Color3.new(0, 1, 0)
+                
+                if player.Name == Murder and IsAlive(player) and ESPConfig.HighlightMurderer then
+                    color = Color3.fromRGB(255, 0, 0)
+                    shouldHighlight = true
+                elseif player.Name == Sheriff and IsAlive(player) and ESPConfig.HighlightSheriff then
+                    color = Color3.fromRGB(0, 0, 255)
+                    shouldHighlight = true
+                elseif ESPConfig.HighlightInnocent and IsAlive(player) and 
+                       player.Name ~= Murder and player.Name ~= Sheriff and player.Name ~= Hero then
+                    color = Color3.fromRGB(0, 255, 0)
+                    shouldHighlight = true
+                elseif player.Name == Hero and IsAlive(player) and not IsAlive(game.Players[Sheriff]) and ESPConfig.HighlightSheriff then
+                    color = Color3.fromRGB(255, 250, 0)
+                    shouldHighlight = true
+                end
+                
+                if shouldHighlight then
+                    highlight = CreateHighlight(player)
+                    if highlight then
+                        highlight.FillColor = color
+                        highlight.OutlineColor = color
+                        highlight.Enabled = true
+                    end
+                elseif highlight then
+                    highlight.Enabled = false
+                end
+            end
+            
+            UpdateNameESP(player)
+            UpdateLineESP(player)
+        end
+    end
+end
+
+-- Обновление ролей (предполагается, что это определено в вашем скрипте)
+local function UpdateRoles()
+    -- Здесь должна быть логика определения Murder, Sheriff, Hero
+end
+
+-- Основной цикл
+RunService.RenderStepped:Connect(function()
+    UpdateRoles()
+    
+    if ESPConfig.HighlightMurderer or ESPConfig.HighlightInnocent or ESPConfig.HighlightSheriff or
+       ESPConfig.NameESPMurderer or ESPConfig.NameESPInnocent or ESPConfig.NameESPSheriff or
+       ESPConfig.LineESP then
+        UpdateHighlights()
     end
 end)
+
+-- Очистка при уходе игрока
+Players.PlayerRemoving:Connect(function(player)
+    if NameESPBillboards[player] then
+        NameESPBillboards[player]:Destroy()
+        NameESPBillboards[player] = nil
+    end
+    if LineESPConnections[player] then
+        LineESPConnections[player]:Destroy()
+        LineESPConnections[player] = nil
+    end
+end)
+
+-- Обновление при появлении персонажа
+for _, player in pairs(Players:GetPlayers()) do
+    player.CharacterAdded:Connect(function()
+        UpdateHighlights()
+    end)
+end
 
 Players.PlayerAdded:Connect(function(player)
-    if player ~= LP then
-        task.wait(1) -- Wait for character to load
-        if ESPConfig.Enabled then
-            UpdateESP()
-        end
-    end
+    player.CharacterAdded:Connect(function()
+        UpdateHighlights()
+    end)
 end)
 
-Workspace.ChildAdded:Connect(function(child)
-    if table.find(mapPaths, child.Name) then
-        task.wait(2) -- Wait for map to load
-        if ESPConfig.Enabled then
-            UpdateESP()
-        end
-    end
-end)
+-- Интерфейс WindUI (добавьте это в ваш интерфейс)
+local Tabs = {} -- Предполагается, что Tabs определен в вашем скрипте
+Tabs.EspTab = {} -- Предполагается, что EspTab существует
 
-LP.CharacterAdded:Connect(function()
-    task.wait(1) -- Wait for local player's character to load
-    if ESPConfig.Enabled then
-        UpdateESP()
-    end
-end)
+Tabs.EspTab.Toggle = function(self, args) -- Заглушка для Toggle
+    args.Callback(args.Default)
+end
 
--- Rest of the original script continues here
+local function gradient(text, color1, color2) -- Заглушка для gradient
+    return text
+end
+
+-- Подсветка
+Tabs.EspTab:Toggle({
+    Title = gradient("Подсветка Убийцы", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Default = false,
+    Callback = function(state) 
+        ESPConfig.HighlightMurderer = state
+        if not state then UpdateHighlights() end
+    end
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Подсветка Невинных", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Default = false,
+    Callback = function(state) 
+        ESPConfig.HighlightInnocent = state
+        if not state then UpdateHighlights() end
+    end
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Подсветка Шерифа", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Default = false,
+    Callback = function(state) 
+        ESPConfig.HighlightSheriff = state
+        if not state then UpdateHighlights() end
+    end
+})
+
+-- Имена
+Tabs.EspTab:Toggle({
+    Title = gradient("Имена Убийцы", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Default = false,
+    Callback = function(state) 
+        ESPConfig.NameESPMurderer = state
+        if not state then UpdateHighlights() end
+    end
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Имена Невинных", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Default = false,
+    Callback = function(state) 
+        ESPConfig.NameESPInnocent = state
+        if not state then UpdateHighlights() end
+    end
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Имена Шерафа", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Default = false,
+    Callback = function(state) 
+        ESPConfig.NameESPSheriff = state
+        if not state then UpdateHighlights() end
+    end
+})
+
+-- Линии
+Tabs.EspTab:Toggle({
+    Title = gradient("Линии к игрокам", Color3.fromHex("#ffffff"), Color3.fromHex("#000000")),
+    Default = false,
+    Callback = function(state) 
+        ESPConfig.LineESP = state
+        if not state then UpdateHighlights() end
+    end
+})
 
 -- Teleport
 Tabs.TeleportTab:Section({Title = gradient("Default TP", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6"))})
@@ -933,6 +736,20 @@ function IsAlive(player)
         end
     end
     return false
+end
+
+local function UpdateRoles()
+    local success, result = pcall(function()
+        return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    end)
+    if success then
+        roles = result or {}
+        Murder, Sheriff = nil, nil
+        for name, data in pairs(roles) do
+            if data.Role == "Murderer" then Murder = name
+            elseif data.Role == 'Sheriff' then Sheriff = name end
+        end
+    end
 end
 
 Tabs.AimbotTab:Section({Title = gradient("Default AimBot", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6"))})
