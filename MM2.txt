@@ -498,6 +498,13 @@ Tabs.TeleportTab:Button({
 Tabs.TeleportTab:Section({Title = gradient("Special TP", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2"))})
 
 Tabs.TeleportTab:Button({
+    Title = "Teleport to Lobby",
+    Callback = function()
+        game.Players.Local.Character.HumanoidRootPart.CFrame = workspace.Lobby.CFrame
+end
+})
+
+Tabs.TeleportTab:Button({
     Title = "Teleport to Sheriff",
     Callback = function()
         UpdateRoles()
@@ -906,7 +913,8 @@ Tabs.AutoFarm:Slider({
 -- Интервал проверки монет
 Tabs.AutoFarm:Slider({
     Title = "Check Interval (sec)",
-    Value = {Min = 0.1, Max = 2, Default = 0.5, Step = 0.1},
+    Step = 0.1,
+    Value = {Min = 0.1, Max = 2, Default = 0.5, },
     Callback = function(value)
         AutoFarm.CoinCheckInterval = value
     end
