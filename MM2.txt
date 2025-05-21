@@ -718,90 +718,87 @@ UpdateRoles()
 Tabs.AimbotTab:Section({Title = gradient("Silent Aimbot (On rework)", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6"))})
 
 -- Mm2 functions
-
--- AutoFarm Tab Implementation
+-- AutoFarm Coins System
 local AutoFarm = {
     Enabled = false,
-    Mode = "Teleport", -- "Teleport", "Fly", "Walk"
-    TeleportSpeed = 0, -- Задержка между телепортами (0 - мгновенно)
-    FlySpeed = 50, -- Скорость полета
-    WalkSpeed = 32, -- Скорость ходьбы
-    CoinIndex = 1, -- Начинаем с первой монеты
-    CurrentMap = nil,
+    Mode = "Teleport", -- "Teleport", "Smooth", "Walk"
+    TeleportDelay = 0,
+    MoveSpeed = 50,
+    WalkSpeed = 32,
+    Connection = nil,
+    CoinCheckInterval = 0.5,
+    
+    -- Все возможные контейнеры с монетами
     CoinContainers = {
         "Factory", "Hospital3", "MilBase", "House2", 
         "Workplace", "Mansion2", "BioLab", "Hotel", 
-        "Factory", "Bank2", "PoliceStation", "ResearchFacility", "Lobby"
-    },
-    Connection = nil
+        "Bank2", "PoliceStation", "ResearchFacility", "Lobby"
+    }
 }
 
-local function findCurrentMap()
-    for _, mapName in ipairs(AutoFarm.CoinContainers) do
-        if workspace:FindFirstChild(mapName) then
-            return mapName
+-- Находит ближайшую монету на текущей карте
+local function findNearestCoin()
+    local closestCoin = nil
+    local shortestDistance = math.huge
+    local character = LocalPlayer.Character
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoidRootPart then return nil end
+    
+    -- Проверяем все возможные контейнеры
+    for _, containerName in ipairs(AutoFarm.CoinContainers) do
+        local container = workspace:FindFirstChild(containerName)
+        if container then
+            local coinContainer = containerName == "Lobby" and container or container:FindFirstChild("CoinContainer")
+            if coinContainer then
+                for _, coin in ipairs(coinContainer:GetChildren()) do
+                    if coin:IsA("BasePart") then
+                        local distance = (humanoidRootPart.Position - coin.Position).Magnitude
+                        if distance < shortestDistance then
+                            shortestDistance = distance
+                            closestCoin = coin
+                        end
+                    end
+                end
+            end
         end
     end
-    return nil
-end
-
-local function getCoinContainer()
-    AutoFarm.CurrentMap = findCurrentMap()
-    if not AutoFarm.CurrentMap then return nil end
     
-    if AutoFarm.CurrentMap == "Lobby" then
-        return workspace.Lobby
-    else
-        return workspace[AutoFarm.CurrentMap]:FindFirstChild("CoinContainer")
-    end
+    return closestCoin
 end
 
-local function getCoins()
-    local container = getCoinContainer()
-    if not container then return {} end
-    
-    local coins = {}
-    for _, coin in ipairs(container:GetChildren()) do
-        if coin:IsA("BasePart") then
-            table.insert(coins, coin)
-        end
-    end
-    return coins
-end
-
+-- Телепортация к монете
 local function teleportToCoin(coin)
     if not coin or not LocalPlayer.Character then return end
     local humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
     
-    humanoidRootPart.CFrame = coin.CFrame + Vector3.new(0, 3, 0)
-    task.wait(AutoFarm.TeleportSpeed)
+    humanoidRootPart.CFrame = CFrame.new(coin.Position + Vector3.new(0, 3, 0))
+    task.wait(AutoFarm.TeleportDelay)
 end
 
-local function flyToCoin(coin)
+-- Плавное перемещение к монете
+local function smoothMoveToCoin(coin)
     if not coin or not LocalPlayer.Character then return end
     local humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return end
     
+    local startTime = tick()
     local startPos = humanoidRootPart.Position
     local endPos = coin.Position + Vector3.new(0, 3, 0)
     local distance = (startPos - endPos).Magnitude
-    local duration = distance / AutoFarm.FlySpeed
+    local duration = distance / AutoFarm.MoveSpeed
     
-    local startTime = tick()
     while tick() - startTime < duration and AutoFarm.Enabled do
         if not coin or not coin.Parent then break end
         
-        local progress = (tick() - startTime) / duration
+        local progress = math.min((tick() - startTime) / duration, 1)
         humanoidRootPart.CFrame = CFrame.new(startPos:Lerp(endPos, progress))
         task.wait()
     end
-    
-    if coin and coin.Parent then
-        humanoidRootPart.CFrame = CFrame.new(endPos)
-    end
 end
 
+-- Ходьба к монете
 local function walkToCoin(coin)
     if not coin or not LocalPlayer.Character then return end
     local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -811,111 +808,93 @@ local function walkToCoin(coin)
     humanoid:MoveTo(coin.Position + Vector3.new(0, 0, 3))
     
     -- Ждем пока дойдет или пока не отключим автофарм
-    while AutoFarm.Enabled and humanoid.MoveDirection.Magnitude > 0 do
+    local startTime = tick()
+    while AutoFarm.Enabled and humanoid.MoveDirection.Magnitude > 0 and tick() - startTime < 10 do
         task.wait(0.5)
     end
 end
 
+-- Подбор монеты
 local function collectCoin(coin)
-    if not coin or not LocalPlayer.Character then return false end
-    
-    -- Проверяем, что монета еще существует
-    if not coin or not coin.Parent then return false end
-    
+    if not coin or not LocalPlayer.Character then return end
     local humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart then return false end
+    if not humanoidRootPart then return end
     
-    -- Подбираем монету
-    firetouchinterest(humanoidRootPart, coin, 0) -- Начало касания
-    firetouchinterest(humanoidRootPart, coin, 1) -- Конец касания
-    
-    return true
+    firetouchinterest(humanoidRootPart, coin, 0)
+    firetouchinterest(humanoidRootPart, coin, 1)
 end
 
-local function autoFarmLoop()
+-- Основной цикл фарма
+local function farmLoop()
     while AutoFarm.Enabled do
-        local coins = getCoins()
-        if #coins == 0 then
-            task.wait(1)
-            WindUI:Notify({
-                Title = "AutoFarm",
-                Content = "No coins found on current map!",
-                Icon = "alert-circle",
-                Duration = 3
-            })
-            break
-        end
-        
-        -- Выбираем следующую монету
-        local coin = coins[AutoFarm.CoinIndex]
-        if not coin then
-            AutoFarm.CoinIndex = 1
-            coin = coins[1]
-        end
+        local coin = findNearestCoin()
         
         if coin then
-            -- Перемещаемся к монете в зависимости от выбранного режима
+            -- Перемещаемся в зависимости от выбранного режима
             if AutoFarm.Mode == "Teleport" then
                 teleportToCoin(coin)
-            elseif AutoFarm.Mode == "Fly" then
-                flyToCoin(coin)
+            elseif AutoFarm.Mode == "Smooth" then
+                smoothMoveToCoin(coin)
             else -- Walk
                 walkToCoin(coin)
             end
             
             -- Подбираем монету
             collectCoin(coin)
-            
-            -- Переходим к следующей монете
-            AutoFarm.CoinIndex = AutoFarm.CoinIndex + 1
-            if AutoFarm.CoinIndex > #coins then
-                AutoFarm.CoinIndex = 1
-            end
-            
-            task.wait(0.1) -- Небольшая задержка между монетами
         else
-            task.wait(1)
+            WindUI:Notify({
+                Title = "AutoFarm",
+                Content = "No coins found nearby!",
+                Icon = "alert-circle",
+                Duration = 2
+            })
+            task.wait(2)
         end
+        
+        task.wait(AutoFarm.CoinCheckInterval)
     end
 end
 
--- AutoFarm Tab UI
+-- UI для AutoFarm Tab
 Tabs.AutoFarm:Section({
-    Title = gradient("AutoFarm Settings", Color3.fromHex("#FFD700"), Color3.fromHex("#FFA500"))
+    Title = gradient("Coin Farming", Color3.fromHex("#FFD700"), Color3.fromHex("#FFA500"))
 })
 
+-- Выбор режима
 Tabs.AutoFarm:Dropdown({
-    Title = "Farm Mode",
-    Values = {"Teleport", "Fly", "Walk"},
+    Title = "Movement Mode",
+    Values = {"Teleport", "Smooth", "Walk"},
     Value = "Teleport",
     Callback = function(mode)
         AutoFarm.Mode = mode
         WindUI:Notify({
             Title = "AutoFarm",
             Content = "Mode set to: "..mode,
-            Icon = "settings",
+            Icon = "check-circle",
             Duration = 2
         })
     end
 })
 
+-- Настройки для телепорта
 Tabs.AutoFarm:Slider({
     Title = "Teleport Delay (sec)",
-    Step = 0.2,
-    Value = {Min = 0, Max = 2, Default = 0},
+    Value = {Min = 0, Max = 1, Default = 0, Step = 0.1},
     Callback = function(value)
-        AutoFarm.TeleportSpeed = value
+        AutoFarm.TeleportDelay = value
     end
 })
 
+-- Настройки для плавного перемещения
 Tabs.AutoFarm:Slider({
-    Title = "Fly Speed",
-    Value = {Min = 10, Max = 200, Default = 50},
+    Title = "Smooth Move Speed",
+    Value = {Min = 20, Max = 200, Default = 50},
     Callback = function(value)
-        AutoFarm.FlySpeed = value
+        AutoFarm.MoveSpeed = value
     end
 })
 
+-- Настройки для ходьбы
 Tabs.AutoFarm:Slider({
     Title = "Walk Speed",
     Value = {Min = 16, Max = 100, Default = 32},
@@ -924,17 +903,26 @@ Tabs.AutoFarm:Slider({
     end
 })
 
+-- Интервал проверки монет
+Tabs.AutoFarm:Slider({
+    Title = "Check Interval (sec)",
+    Value = {Min = 0.1, Max = 2, Default = 0.5, Step = 0.1},
+    Callback = function(value)
+        AutoFarm.CoinCheckInterval = value
+    end
+})
+
+-- Включение/выключение
 Tabs.AutoFarm:Toggle({
     Title = "Enable AutoFarm",
     Default = false,
     Callback = function(state)
         AutoFarm.Enabled = state
         if state then
-            AutoFarm.CoinIndex = 1 -- Сбрасываем индекс при включении
-            AutoFarm.Connection = task.spawn(autoFarmLoop)
+            AutoFarm.Connection = task.spawn(farmLoop)
             WindUI:Notify({
                 Title = "AutoFarm",
-                Content = "Started farming coins!",
+                Content = "Started farming nearest coins!",
                 Icon = "check-circle",
                 Duration = 2
             })
@@ -949,19 +937,6 @@ Tabs.AutoFarm:Toggle({
                 Duration = 2
             })
         end
-    end
-})
-
-Tabs.AutoFarm:Button({
-    Title = "Force Reset Coin Index",
-    Callback = function()
-        AutoFarm.CoinIndex = 1
-        WindUI:Notify({
-            Title = "AutoFarm",
-            Content = "Coin index reset to 1",
-            Icon = "refresh-cw",
-            Duration = 2
-        })
     end
 })
 
