@@ -1337,18 +1337,18 @@ Tabs.MurderTab:Button({
             })
         end
     end
-})-- Sheriff Tab Implementation (updated with proper toggle functionality)
+})
+-- Sheriff Tab Implementation
 local shotButton = nil
 local shotButtonFrame = nil
 local shotButtonActive = false
 local shotType = "Default"
 local buttonSize = 50
 local isDragging = false
-local touchStartPos, buttonStartPos
 
 -- Функция для создания кнопки выстрела
 local function CreateShotButton()
-    if shotButton then return end -- Если кнопка уже существует, не создаем новую
+    if shotButton then return end
     
     -- Создаем основной контейнер
     local screenGui = game:GetService("CoreGui"):FindFirstChild("WindUI_SheriffGui") or Instance.new("ScreenGui")
@@ -1356,7 +1356,7 @@ local function CreateShotButton()
     screenGui.Parent = game:GetService("CoreGui")
     screenGui.ResetOnSpawn = false
     screenGui.DisplayOrder = 999
-    screenGui.IgnoreGuiInset = true -- Для корректного отображения на мобильных устройствах
+    screenGui.IgnoreGuiInset = true
     
     -- Создаем Frame для кнопки
     shotButtonFrame = Instance.new("Frame")
@@ -1371,31 +1371,31 @@ local function CreateShotButton()
     shotButton = Instance.new("TextButton")
     shotButton.Name = "SheriffShotButton"
     shotButton.Size = UDim2.new(1, 0, 1, 0)
-    shotButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120) -- Серый фон
-    shotButton.BackgroundTransparency = 0.5 -- Полупрозрачный
-    shotButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- Белый текст
+    shotButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+    shotButton.BackgroundTransparency = 0.5
+    shotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     shotButton.Text = "SHOT"
     shotButton.TextSize = 14
     shotButton.Font = Enum.Font.GothamBold
     shotButton.BorderSizePixel = 0
     shotButton.ZIndex = 101
     shotButton.AutoButtonColor = false
-    shotButton.TextScaled = true -- Адаптивный размер текста
+    shotButton.TextScaled = true
     
-    -- Темно-синяя обводка
+    -- Обводка
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(0, 40, 150) -- Темно-синий цвет
+    stroke.Color = Color3.fromRGB(0, 40, 150)
     stroke.Thickness = 2
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Transparency = 0.3 -- Полупрозрачная обводка
+    stroke.Transparency = 0.3
     stroke.Parent = shotButton
     
     -- Закругленные углы
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0.3, 0) -- Более скругленные углы
+    corner.CornerRadius = UDim.new(0.3, 0)
     corner.Parent = shotButton
     
-    -- Тень для кнопки
+    -- Тень
     local shadow = Instance.new("ImageLabel")
     shadow.Name = "Shadow"
     shadow.Size = UDim2.new(1, 10, 1, 10)
@@ -1404,17 +1404,16 @@ local function CreateShotButton()
     shadow.BackgroundTransparency = 1
     shadow.Image = "rbxassetid://1316045217"
     shadow.ImageColor3 = Color3.new(0, 0, 0)
-    shadow.ImageTransparency = 0.85 -- Более прозрачная тень
+    shadow.ImageTransparency = 0.85
     shadow.ScaleType = Enum.ScaleType.Slice
     shadow.SliceCenter = Rect.new(10, 10, 118, 118)
     shadow.ZIndex = 100
     shadow.Parent = shotButton
     
-    -- Улучшенная анимация нажатия
+    -- Анимация нажатия
     local function animatePress()
         local tweenService = game:GetService("TweenService")
         
-        -- Анимация уменьшения и изменения цвета при нажатии
         local pressDown = tweenService:Create(
             shotButton,
             TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -1425,7 +1424,6 @@ local function CreateShotButton()
             }
         )
         
-        -- Анимация возврата к исходному состоянию
         local pressUp = tweenService:Create(
             shotButton,
             TweenInfo.new(0.2, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
@@ -1443,74 +1441,7 @@ local function CreateShotButton()
     
     shotButton.MouseButton1Click:Connect(function()
         animatePress()
-        -- Остальная логика выстрела остается без изменений
-        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
-            return
-        end
-
-        -- Получаем данные об убийце
-        local success, roles = pcall(function()
-            return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-        end)
-        
-        if not success or not roles then
-            return
-        end
-
-        local murderer = nil
-        for name, data in pairs(roles) do
-            if data.Role == "Murderer" then
-                murderer = Players:FindFirstChild(name)
-                break
-            end
-        end
-
-        -- Проверка убийцы
-        if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Humanoid") or murderer.Character.Humanoid.Health <= 0 then
-            return
-        end
-
-        -- Проверяем оружие
-        local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
-        
-        -- Если выбран режим Default, но оружия нет
-        if shotType == "Default" and not gun then
-            return
-        end
-
-        -- Экипировка оружия если нужно
-        if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
-            gun.Parent = LocalPlayer.Character
-        end
-
-        -- Телепорт если выбран режим Teleport
-        if shotType == "Teleport" then
-            local targetRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
-            local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            
-            if targetRoot and localRoot then
-                localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -4)
-            end
-        end
-
-        -- Выстрел
-        if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
-            gun.Parent = LocalPlayer.Character
-        end
-        gun = LocalPlayer.Character:FindFirstChild("Gun")
-        if gun and gun:FindFirstChild("KnifeLocal") then
-            local targetPart = murderer.Character:FindFirstChild("HumanoidRootPart")
-            
-            if targetPart then
-                local args = {
-                    [1] = 1,
-                    [2] = targetPart.Position,
-                    [3] = "AH2"
-                }
-                
-                gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(unpack(args))
-            end
-        end
+        ShootMurderer()
     end)
 
     -- Обработчики для перемещения кнопки
@@ -1521,8 +1452,6 @@ local function CreateShotButton()
     local function updateInput(input)
         local delta = input.Position - dragStart
         local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        
-        -- Ограничиваем позицию в пределах экрана
         local guiSize = game:GetService("CoreGui").AbsoluteSize
         newPos = UDim2.new(
             math.clamp(newPos.X.Scale, 0, 1),
@@ -1530,7 +1459,6 @@ local function CreateShotButton()
             math.clamp(newPos.Y.Scale, 0, 1),
             math.clamp(newPos.Y.Offset, 0, guiSize.Y - buttonSize)
         )
-        
         shotButtonFrame.Position = newPos
     end
     
@@ -1567,19 +1495,8 @@ local function CreateShotButton()
     })
 end
 
-    shotButton.Parent = shotButtonFrame
-    shotButtonFrame.Parent = screenGui
-    shotButtonActive = true
-    
-    WindUI:Notify({
-        Title = "Sheriff System",
-        Content = "Shot button activated",
-        Icon = "check-circle",
-        Duration = 3
-    })
-
 local function RemoveShotButton()
-    if not shotButton then return end -- Если кнопки нет, ничего не делаем
+    if not shotButton then return end
     
     if shotButton then
         shotButton:Destroy()
@@ -1655,11 +1572,9 @@ Tabs.SheriffTab:Slider({
     Callback = function(size)
         buttonSize = size
         if shotButtonActive then
-            -- Сохраняем текущую позицию
             local currentPos = shotButtonFrame and shotButtonFrame.Position or UDim2.new(1, -buttonSize - 20, 0.5, -buttonSize/2)
             RemoveShotButton()
             CreateShotButton()
-            -- Восстанавливаем позицию после изменения размера
             if shotButtonFrame then
                 shotButtonFrame.Position = currentPos
             end
@@ -1673,21 +1588,16 @@ Tabs.SheriffTab:Slider({
     end
 })
 
-
 local function ShootMurderer()
-    -- Проверяем, жив ли игрок
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
-
         return
     end
 
-    -- Получаем данные об убийце
     local success, roles = pcall(function()
         return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
     end)
     
     if not success or not roles then
-
         return
     end
 
@@ -1699,27 +1609,20 @@ local function ShootMurderer()
         end
     end
 
-    -- Проверка убийцы
     if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Humanoid") or murderer.Character.Humanoid.Health <= 0 then
-
         return
     end
 
-    -- Проверяем оружие
     local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
     
-    -- Если выбран режим Default, но оружия нет
     if shotType == "Default" and not gun then
-        
         return
     end
 
-    -- Экипировка оружия если нужно
     if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
         gun.Parent = LocalPlayer.Character
     end
 
-    -- Телепорт если выбран режим Teleport
     if shotType == "Teleport" then
         local targetRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
         local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1729,7 +1632,6 @@ local function ShootMurderer()
         end
     end
 
-    -- Выстрел
     if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
         gun.Parent = LocalPlayer.Character
     end
@@ -1748,6 +1650,7 @@ local function ShootMurderer()
         end
     end
 end
+
 
 -- Settings
 local Settings = {
