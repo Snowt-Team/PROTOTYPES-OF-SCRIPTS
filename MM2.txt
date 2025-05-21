@@ -1296,9 +1296,9 @@ Tabs.MurderTab:Toggle({
     Default = false,
     Callback = function(killActive)
         if killActive then
-            stopKilling()
-        else
             killTargets()
+        else
+            stopKilling()
         end
     end
 })
@@ -1338,15 +1338,16 @@ Tabs.MurderTab:Button({
         end
     end
 })
--- Sheriff Tab Implementation (updated shot button)
+-- Sheriff Tab Implementation (updated shot button with mobile support)
 local shotButton = nil
 local shotButtonFrame = nil
 local shotButtonActive = false
 local shotType = "Default"
 local buttonSize = 50
 local isDragging = false
+local touchStartPos, buttonStartPos
 
--- Функция для создания кнопки выстрела с улучшенным дизайном
+-- Функция для создания кнопки выстрела с улучшенным дизайном и мобильной поддержкой
 local function CreateShotButton()
     if shotButton then 
         shotButton:Destroy()
@@ -1363,6 +1364,7 @@ local function CreateShotButton()
     screenGui.Parent = game:GetService("CoreGui")
     screenGui.ResetOnSpawn = false
     screenGui.DisplayOrder = 999
+    screenGui.IgnoreGuiInset = true -- Для корректного отображения на мобильных устройствах
     
     -- Создаем Frame для кнопки
     shotButtonFrame = Instance.new("Frame")
@@ -1377,8 +1379,8 @@ local function CreateShotButton()
     shotButton = Instance.new("TextButton")
     shotButton.Name = "SheriffShotButton"
     shotButton.Size = UDim2.new(1, 0, 1, 0)
-    shotButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Серый фон
-    shotButton.BackgroundTransparency = 0.2
+    shotButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120) -- Серый фон
+    shotButton.BackgroundTransparency = 0.5 -- Более прозрачный
     shotButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- Белый текст
     shotButton.Text = "SHOT"
     shotButton.TextSize = 14
@@ -1386,17 +1388,19 @@ local function CreateShotButton()
     shotButton.BorderSizePixel = 0
     shotButton.ZIndex = 101
     shotButton.AutoButtonColor = false
+    shotButton.TextScaled = true -- Адаптивный размер текста для мобильных устройств
     
     -- Темно-синяя обводка
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(0, 30, 128) -- Темно-синий цвет
+    stroke.Color = Color3.fromRGB(0, 40, 150) -- Темно-синий цвет
     stroke.Thickness = 2
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Transparency = 0.3 -- Полупрозрачная обводка
     stroke.Parent = shotButton
     
     -- Закругленные углы
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0.2, 0)
+    corner.CornerRadius = UDim.new(0.3, 0) -- Более скругленные углы
     corner.Parent = shotButton
     
     -- Тень для кнопки
@@ -1408,45 +1412,179 @@ local function CreateShotButton()
     shadow.BackgroundTransparency = 1
     shadow.Image = "rbxassetid://1316045217"
     shadow.ImageColor3 = Color3.new(0, 0, 0)
-    shadow.ImageTransparency = 0.8
+    shadow.ImageTransparency = 0.85 -- Более прозрачная тень
     shadow.ScaleType = Enum.ScaleType.Slice
     shadow.SliceCenter = Rect.new(10, 10, 118, 118)
     shadow.ZIndex = 100
     shadow.Parent = shotButton
     
+    -- Эффект свечения при наведении
+    local hoverGlow = Instance.new("Frame")
+    hoverGlow.Name = "HoverGlow"
+    hoverGlow.Size = UDim2.new(1, 0, 1, 0)
+    hoverGlow.BackgroundColor3 = Color3.fromRGB(0, 80, 255)
+    hoverGlow.BackgroundTransparency = 0.9
+    hoverGlow.BorderSizePixel = 0
+    hoverGlow.ZIndex = 102
+    hoverGlow.Visible = false
+    
+    local glowCorner = Instance.new("UICorner")
+    glowCorner.CornerRadius = UDim.new(0.3, 0)
+    glowCorner.Parent = hoverGlow
+    
+    hoverGlow.Parent = shotButton
+    
     -- Улучшенная анимация нажатия
+    local tweenService = game:GetService("TweenService")
+    
     local function animatePress()
-        local tweenService = game:GetService("TweenService")
-        
-        -- Анимация уменьшения и изменения цвета при нажатии
+        -- Анимация нажатия
         local pressDown = tweenService:Create(
             shotButton,
-            TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
             {
-                Size = UDim2.new(0.9, 0, 0.9, 0),
-                BackgroundColor3 = Color3.fromRGB(70, 70, 70),
-                TextColor3 = Color3.fromRGB(200, 200, 255)
+                Size = UDim2.new(0.85, 0, 0.85, 0),
+                BackgroundTransparency = 0.3,
+                BackgroundColor3 = Color3.fromRGB(80, 80, 80),
+                TextColor3 = Color3.fromRGB(200, 220, 255)
             }
         )
         
-        -- Анимация возврата к исходному состоянию
+        -- Анимация свечения
+        local glowIn = tweenService:Create(
+            hoverGlow,
+            TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {
+                BackgroundTransparency = 0.7,
+                Size = UDim2.new(1.1, 0, 1.1, 0)
+            }
+        )
+        
+        hoverGlow.Visible = true
+        pressDown:Play()
+        glowIn:Play()
+        
+        -- Анимация возврата
+        task.wait(0.08)
+        
         local pressUp = tweenService:Create(
             shotButton,
-            TweenInfo.new(0.2, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
+            TweenInfo.new(0.3, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
             {
                 Size = UDim2.new(1, 0, 1, 0),
-                BackgroundColor3 = Color3.fromRGB(100, 100, 100),
+                BackgroundTransparency = 0.5,
+                BackgroundColor3 = Color3.fromRGB(120, 120, 120),
                 TextColor3 = Color3.fromRGB(255, 255, 255)
             }
         )
         
-        pressDown:Play()
-        pressDown.Completed:Wait()
+        local glowOut = tweenService:Create(
+            hoverGlow,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {
+                BackgroundTransparency = 0.9,
+                Size = UDim2.new(1, 0, 1, 0)
+            }
+        )
+        
         pressUp:Play()
+        glowOut:Play()
+        
+        glowOut.Completed:Connect(function()
+            hoverGlow.Visible = false
+        end)
     end
     
+    -- Обработчики для перемещения кнопки (поддержка ПК и мобильных устройств)
+    local function updateInput(input)
+        local gui = game:GetService("CoreGui")
+        local guiSize = gui.AbsoluteSize
+        local inputPos
+        
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            inputPos = input.Position
+        elseif input.UserInputType == Enum.UserInputType.Touch then
+            inputPos = input.Position
+        else
+            return
+        end
+        
+        local delta = inputPos - touchStartPos
+        local newPos = UDim2.new(
+            buttonStartPos.X.Scale,
+            buttonStartPos.X.Offset + delta.X,
+            buttonStartPos.Y.Scale,
+            buttonStartPos.Y.Offset + delta.Y
+        )
+        
+        -- Ограничиваем позицию в пределах экрана
+        newPos = UDim2.new(
+            math.clamp(newPos.X.Scale, 0, 1),
+            math.clamp(newPos.X.Offset, 0, guiSize.X - buttonSize),
+            math.clamp(newPos.Y.Scale, 0, 1),
+            math.clamp(newPos.Y.Offset, 0, guiSize.Y - buttonSize)
+        )
+        
+        shotButtonFrame.Position = newPos
+    end
+    
+    -- Обработчик начала перемещения (для ПК и мобильных устройств)
+    shotButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+            touchStartPos = input.Position
+            buttonStartPos = shotButtonFrame.Position
+            animatePress()
+            
+            -- Подписка на изменение состояния ввода
+            local connection
+            connection = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    isDragging = false
+                    connection:Disconnect()
+                end
+            end)
+        end
+    end)
+    
+    -- Обработчик перемещения (для ПК и мобильных устройств)
+    shotButton.InputChanged:Connect(function(input)
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
+                          input.UserInputType == Enum.UserInputType.Touch) then
+            updateInput(input)
+        end
+    end)
+    
+    -- Обработчик наведения (только для ПК)
+    if not UserInputService.TouchEnabled then
+        shotButton.MouseEnter:Connect(function()
+            local hoverTween = tweenService:Create(
+                shotButton,
+                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {
+                    BackgroundTransparency = 0.4,
+                    BackgroundColor3 = Color3.fromRGB(140, 140, 140)
+                }
+            )
+            hoverTween:Play()
+        end)
+        
+        shotButton.MouseLeave:Connect(function()
+            local leaveTween = tweenService:Create(
+                shotButton,
+                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {
+                    BackgroundTransparency = 0.5,
+                    BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+                }
+            )
+            leaveTween:Play()
+        end)
+    end
+    
+    -- Логика выстрела (остается без изменений)
     shotButton.MouseButton1Click:Connect(function()
-        animatePress()
         -- Остальная логика выстрела остается без изменений
         if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
             return
@@ -1485,7 +1623,6 @@ local function CreateShotButton()
         -- Экипировка оружия если нужно
         if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
             gun.Parent = LocalPlayer.Character
-            task.wait(0)
         end
 
         -- Телепорт если выбран режим Teleport
@@ -1495,14 +1632,12 @@ local function CreateShotButton()
             
             if targetRoot and localRoot then
                 localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -4)
-                task.wait(0)
             end
         end
 
         -- Выстрел
         if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
             gun.Parent = LocalPlayer.Character
-            task.wait(0)
         end
         gun = LocalPlayer.Character:FindFirstChild("Gun")
         if gun and gun:FindFirstChild("KnifeLocal") then
@@ -1519,46 +1654,75 @@ local function CreateShotButton()
             end
         end
     end)
-
-    -- Обработчики для перемещения кнопки
-    local dragInput
-    local dragStart
-    local startPos
     
-    local function updateInput(input)
-        local delta = input.Position - dragStart
-        local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        
-        -- Ограничиваем позицию в пределах экрана
-        local guiSize = game:GetService("CoreGui").AbsoluteSize
-        newPos = UDim2.new(
-            math.clamp(newPos.X.Scale, 0, 1),
-            math.clamp(newPos.X.Offset, 0, guiSize.X - buttonSize),
-            math.clamp(newPos.Y.Scale, 0, 1),
-            math.clamp(newPos.Y.Offset, 0, guiSize.Y - buttonSize)
-        )
-        
-        shotButtonFrame.Position = newPos
-    end
-    
-    shotButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDragging = true
-            dragStart = input.Position
-            startPos = shotButtonFrame.Position
-            animatePress()
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    isDragging = false
-                end
-            end)
+    shotButton.TouchTap:Connect(function()
+            -- Остальная логика выстрела остается без изменений
+        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
+            return
         end
-    end)
-    
-    shotButton.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and isDragging then
-            updateInput(input)
+
+        -- Получаем данные об убийце
+        local success, roles = pcall(function()
+            return ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+        end)
+        
+        if not success or not roles then
+            return
+        end
+
+        local murderer = nil
+        for name, data in pairs(roles) do
+            if data.Role == "Murderer" then
+                murderer = Players:FindFirstChild(name)
+                break
+            end
+        end
+
+        -- Проверка убийцы
+        if not murderer or not murderer.Character or not murderer.Character:FindFirstChild("Humanoid") or murderer.Character.Humanoid.Health <= 0 then
+            return
+        end
+
+        -- Проверяем оружие
+        local gun = LocalPlayer.Character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
+        
+        -- Если выбран режим Default, но оружия нет
+        if shotType == "Default" and not gun then
+            return
+        end
+
+        -- Экипировка оружия если нужно
+        if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
+            gun.Parent = LocalPlayer.Character
+        end
+
+        -- Телепорт если выбран режим Teleport
+        if shotType == "Teleport" then
+            local targetRoot = murderer.Character:FindFirstChild("HumanoidRootPart")
+            local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if targetRoot and localRoot then
+                localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -4)
+            end
+        end
+
+        -- Выстрел
+        if gun and not LocalPlayer.Character:FindFirstChild("Gun") then
+            gun.Parent = LocalPlayer.Character
+        end
+        gun = LocalPlayer.Character:FindFirstChild("Gun")
+        if gun and gun:FindFirstChild("KnifeLocal") then
+            local targetPart = murderer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if targetPart then
+                local args = {
+                    [1] = 1,
+                    [2] = targetPart.Position,
+                    [3] = "AH2"
+                }
+                
+                gun.KnifeLocal.CreateBeam.RemoteFunction:InvokeServer(unpack(args))
+            end
         end
     end)
     
@@ -1568,7 +1732,7 @@ local function CreateShotButton()
     
     WindUI:Notify({
         Title = "Sheriff System",
-        Content = "Shot button activated",
+        Content = "Shot button activated (Supports mobile)",
         Icon = "check-circle",
         Duration = 3
     })
