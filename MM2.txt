@@ -1134,8 +1134,7 @@ task.spawn(function()
     if GunSystem.AutoGrabEnabled then
         coroutine.wrap(AutoGrabGun)()
     end
-end)
--- Murder Tab Implementation
+end)-- Murder Tab Implementation
 local killActive = false
 local attackDelay = 0.5 -- задержка между атаками
 local targetRoles = {"Sheriff", "Hero", "Innocent"} -- роли для атаки
@@ -1166,6 +1165,35 @@ local function equipKnife()
     return false
 end
 
+local function getNearestTarget()
+    local targets = {}
+    local roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    local localRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not localRoot then return nil end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local role = getPlayerRole(player)
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            
+            if role and humanoid and humanoid.Health > 0 and targetRoot and table.find(targetRoles, role) then
+                table.insert(targets, {
+                    Player = player,
+                    Distance = (localRoot.Position - targetRoot.Position).Magnitude
+                })
+            end
+        end
+    end
+    
+    table.sort(targets, function(a, b)
+        return a.Distance < b.Distance
+    end)
+    
+    return targets[1] and targets[1].Player or nil
+end
+
 local function attackTarget(target)
     if not target or not target.Character then return false end
     
@@ -1186,11 +1214,15 @@ local function attackTarget(target)
         return false
     end
     
-    -- Телепортируемся к цели
     local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
     local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
     if targetRoot and localRoot then
-        localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -1.5)
+        -- Телепортируемся к цели на оптимальное расстояние
+        localRoot.CFrame = CFrame.new(
+            targetRoot.Position + (localRoot.Position - targetRoot.Position).Unit * 2, -- Оптимальное расстояние
+            targetRoot.Position -- Поворачиваемся к цели
+        )
         task.wait(0.1)
     end
     
@@ -1206,25 +1238,6 @@ local function attackTarget(target)
     return false
 end
 
-local function getValidTargets()
-    local targets = {}
-    local roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local role = getPlayerRole(player)
-            local isAlive = player.Character:FindFirstChild("Humanoid") and 
-                           player.Character.Humanoid.Health > 0
-            
-            if role and isAlive and table.find(targetRoles, role) then
-                table.insert(targets, player)
-            end
-        end
-    end
-    
-    return targets
-end
-
 local function killTargets()
     if killActive then return end
     
@@ -1232,16 +1245,16 @@ local function killTargets()
     
     WindUI:Notify({
         Title = "Kill Targets",
-        Content = "Starting attack on Sheriff/Hero/Innocent...",
+        Content = "Starting attack on nearest targets...",
         Icon = "alert-circle",
         Duration = 2
     })
     
     local function attackSequence()
         while killActive do
-            local targets = getValidTargets()
+            local target = getNearestTarget()
             
-            if #targets == 0 then
+            if not target then
                 WindUI:Notify({
                     Title = "Kill Targets",
                     Content = "No valid targets found!",
@@ -1252,23 +1265,16 @@ local function killTargets()
                 break
             end
             
-            -- Атакуем всех подходящих целей по очереди
-            for _, target in ipairs(targets) do
-                if not killActive then break end
-                
-                if attackTarget(target) then
-                    WindUI:Notify({
-                        Title = "Kill Targets",
-                        Content = "Attacked "..target.Name,
-                        Icon = "check-circle",
-                        Duration = 1
-                    })
-                end
-                
-                task.wait(attackDelay)
+            if attackTarget(target) then
+                WindUI:Notify({
+                    Title = "Kill Targets",
+                    Content = "Attacked "..target.Name,
+                    Icon = "check-circle",
+                    Duration = 1
+                })
             end
             
-            task.wait(0.5) -- Пауза перед следующим циклом
+            task.wait(attackDelay)
         end
     end
     
@@ -1294,8 +1300,8 @@ Tabs.MurderTab:Section({
 Tabs.MurderTab:Toggle({
     Title = "Kill All",
     Default = false,
-    Callback = function(killActive)
-        if killActive then
+    Callback = function(state)
+        if state then
             killTargets()
         else
             stopKilling()
@@ -1338,6 +1344,7 @@ Tabs.MurderTab:Button({
         end
     end
 })
+
 -- Sheriff Tab Implementation
 local shotButton = nil
 local shotButtonFrame = nil
@@ -1441,7 +1448,6 @@ local function CreateShotButton()
     
     shotButton.MouseButton1Click:Connect(function()
         animatePress()
-                -- Остальная логика выстрела остается без изменений
         if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
             return
         end
@@ -1501,7 +1507,7 @@ local function CreateShotButton()
             
             if targetPart then
                 local args = {
-                    [1] = 1,
+                    [1] = 10,
                     [2] = targetPart.Position,
                     [3] = "AH2"
                 }
