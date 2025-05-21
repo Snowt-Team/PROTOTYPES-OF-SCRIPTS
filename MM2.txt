@@ -1135,133 +1135,152 @@ task.spawn(function()
         coroutine.wrap(AutoGrabGun)()
     end
 end)
-
 -- Murder Tab Implementation
-local killAllActive = false
-local killAllConnection = nil
-local teleportDelay = 0.5 -- задержка между телепортациями в секундах
-local attackedPlayers = {} -- таблица для отслеживания атакованных игроков
+local killActive = false
+local attackDelay = 0.5 -- задержка между атаками
+local targetRoles = {"Sheriff", "Hero", "Innocent"} -- роли для атаки
+
+local function getPlayerRole(player)
+    local roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    if roles and roles[player.Name] then
+        return roles[player.Name].Role
+    end
+    return nil
+end
 
 local function equipKnife()
     local character = LocalPlayer.Character
     if not character then return false end
     
-    -- Проверяем, есть ли нож в руках
     if character:FindFirstChild("Knife") then
         return true
     end
     
-    -- Проверяем, есть ли нож в инвентаре
     local knife = LocalPlayer.Backpack:FindFirstChild("Knife")
     if knife then
         knife.Parent = character
-        task.wait(0.2) -- небольшая задержка для экипировки
-        return character:FindFirstChild("Knife") ~= nil
+        task.wait(0.2)
+        return true
     end
     
     return false
 end
 
-local function attackPlayer(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then return end
+local function attackTarget(target)
+    if not target or not target.Character then return false end
     
-    -- Экипируем нож если его нет
+    -- Проверяем, что цель еще жива
+    local humanoid = target.Character:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then
+        return false
+    end
+    
+    -- Экипируем нож
     if not equipKnife() then
         WindUI:Notify({
-            Title = "Kill All",
+            Title = "Kill Targets",
             Content = "No knife found!",
             Icon = "x-circle",
             Duration = 2
         })
-        return
+        return false
     end
     
-    -- Телепортируемся к игроку
-    local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    -- Телепортируемся к цели
+    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
     local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if targetRoot and localRoot then
-        localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -2) -- Телепорт на 2 метра перед игроком
-        task.wait(0.1) -- небольшая задержка после телепорта
+        localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, -1.5)
+        task.wait(0.1)
     end
     
     -- Атакуем ножом
     local knife = LocalPlayer.Character:FindFirstChild("Knife")
     if knife and knife:FindFirstChild("Stab") then
-        local args = {
-            [1] = "Down"
-        }
-        knife.Stab:FireServer(unpack(args))
-        
-        WindUI:Notify({
-            Title = "Kill All",
-            Content = "Attacked "..targetPlayer.Name,
-            Icon = "check-circle",
-            Duration = 1
-        })
+        for i = 1, 3 do -- Несколько ударов для надежности
+            knife.Stab:FireServer("Down")
+            task.wait(0.1)
+        end
+        return true
     end
+    return false
 end
 
-local function killAllPlayers()
-    if killAllActive then return end
+local function getValidTargets()
+    local targets = {}
+    local roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
     
-    killAllActive = true
-    attackedPlayers = {} -- очищаем список атакованных
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local role = getPlayerRole(player)
+            local isAlive = player.Character:FindFirstChild("Humanoid") and 
+                           player.Character.Humanoid.Health > 0
+            
+            if role and isAlive and table.find(targetRoles, role) then
+                table.insert(targets, player)
+            end
+        end
+    end
+    
+    return targets
+end
+
+local function killTargets()
+    if killActive then return end
+    
+    killActive = true
     
     WindUI:Notify({
-        Title = "Kill All",
-        Content = "Starting kill sequence...",
+        Title = "Kill Targets",
+        Content = "Starting attack on Sheriff/Hero/Innocent...",
         Icon = "alert-circle",
         Duration = 2
     })
     
-    local function processNextPlayer()
-        local validPlayers = {}
-        for _, player in ipairs(Players:GetPlayers()) do
-            -- Игроки, которых еще не атаковали и которые живы
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and 
-               player.Character.Humanoid.Health > 0 and not attackedPlayers[player] then
-                table.insert(validPlayers, player)
+    local function attackSequence()
+        while killActive do
+            local targets = getValidTargets()
+            
+            if #targets == 0 then
+                WindUI:Notify({
+                    Title = "Kill Targets",
+                    Content = "No valid targets found!",
+                    Icon = "check-circle",
+                    Duration = 3
+                })
+                killActive = false
+                break
             end
-        end
-        
-        if #validPlayers == 0 then
-            WindUI:Notify({
-                Title = "Kill All",
-                Content = "All players processed!",
-                Icon = "check-circle",
-                Duration = 3
-            })
-            killAllActive = false
-            if killAllConnection then
-                killAllConnection:Disconnect()
-                killAllConnection = nil
+            
+            -- Атакуем всех подходящих целей по очереди
+            for _, target in ipairs(targets) do
+                if not killActive then break end
+                
+                if attackTarget(target) then
+                    WindUI:Notify({
+                        Title = "Kill Targets",
+                        Content = "Attacked "..target.Name,
+                        Icon = "check-circle",
+                        Duration = 1
+                    })
+                end
+                
+                task.wait(attackDelay)
             end
-            return
+            
+            task.wait(0.5) -- Пауза перед следующим циклом
         end
-        
-        -- Выбираем случайного игрока из оставшихся
-        local targetPlayer = validPlayers[math.random(1, #validPlayers)]
-        attackedPlayers[targetPlayer] = true -- помечаем как атакованного
-        
-        attackPlayer(targetPlayer)
-        
-        -- Планируем следующую атаку через задержку
-        task.delay(teleportDelay, processNextPlayer)
     end
     
-    -- Начинаем процесс
-    processNextPlayer()
+    -- Запускаем в отдельном потоке
+    task.spawn(attackSequence)
 end
 
-local function stopKillAll()
-    killAllActive = false
-    if killAllConnection then
-        killAllConnection:Disconnect()
-        killAllConnection = nil
-    end
+local function stopKilling()
+    killActive = false
     WindUI:Notify({
-        Title = "Kill All",
-        Content = "Kill sequence stopped",
+        Title = "Kill Targets",
+        Content = "Attack sequence stopped",
         Icon = "x-circle",
         Duration = 2
     })
@@ -1269,28 +1288,28 @@ end
 
 -- Murder Tab UI
 Tabs.MurderTab:Section({
-    Title = gradient("Kill Functions", Color3.fromHex("#e80909"), Color3.fromHex("#630404"))
+    Title = gradient("Targeted Kill", Color3.fromHex("#e80909"), Color3.fromHex("#630404"))
 })
 
 Tabs.MurderTab:Button({
-    Title = "Kill All Players",
+    Title = "Kill Sheriff/Hero/Innocent",
     Callback = function()
-        if killAllActive then
-            stopKillAll()
+        if killActive then
+            stopKilling()
         else
-            killAllPlayers()
+            killTargets()
         end
     end
 })
 
 Tabs.MurderTab:Slider({
-    Title = "Teleport Delay",
+    Title = "Attack Delay",
     Step = 0.1,
     Value = {Min = 0.1, Max = 2, Default = 0.5},
     Callback = function(value)
-        teleportDelay = value
+        attackDelay = value
         WindUI:Notify({
-            Title = "Kill All",
+            Title = "Kill Targets",
             Content = "Delay set to "..value.."s",
             Icon = "check-circle",
             Duration = 2
@@ -1318,8 +1337,6 @@ Tabs.MurderTab:Button({
         end
     end
 })
-
-
 
 -- Sheriff Tab Implementation
 local shotButton = nil
