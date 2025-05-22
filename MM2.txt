@@ -206,17 +206,21 @@ local ESPConfig = {
     LineESP = false
 }
 
--- Переменные для ролей (предполагается, что они определены в вашем скрипте)
-local Murder, Sheriff, Hero = nil, nil, nil
+local Murder, Sheriff, Hero
+local roles = {}
 
 -- Таблица для BillboardGui (имена)
 local NameESPBillboards = {}
 -- Таблица для линий
 local LineESPConnections = {}
 
--- Функция проверки, жив ли игрок
-local function IsAlive(player)
-    return player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0
+function IsAlive()
+    for name, data in pairs(roles) do
+        if player.Name == name then
+            return not data.Killed and not data.Dead
+        end
+    end
+    return false
 end
 
 -- Функция создания подсветки
@@ -397,9 +401,17 @@ local function UpdateHighlights()
     end
 end
 
--- Обновление ролей (предполагается, что это определено в вашем скрипте)
 local function UpdateRoles()
-    -- Здесь должна быть логика определения Murder, Sheriff, Hero
+    roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    for name, data in pairs(roles) do
+        if data.Role == "Murderer" then
+            Murder = name
+        elseif data.Role == 'Sheriff' then
+            Sheriff = name
+        elseif data.Role == 'Hero' then
+            Hero = name
+        end
+    end
 end
 
 -- Основной цикл
