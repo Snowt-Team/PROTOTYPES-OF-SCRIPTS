@@ -548,9 +548,6 @@ Players.PlayerAdded:Connect(function(player)
     end)
 end)
 
--- Обновление интерфейса ESP
-Tabs.EspTab:Clear() -- Очищаем существующий EspTab
-
 -- Секция Highlight ESP
 Tabs.EspTab:Section({Title = gradient("Highlight ESP", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2"))})
 
