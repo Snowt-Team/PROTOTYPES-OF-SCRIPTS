@@ -190,12 +190,6 @@ Tabs.CharacterTab:Toggle({
 })
 
 -- ESP
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LP = Players.LocalPlayer
-
--- Конфигурация ESP
 local ESPConfig = {
     HighlightMurderer = false,
     HighlightInnocent = false,
@@ -203,18 +197,20 @@ local ESPConfig = {
     NameESPMurderer = false,
     NameESPInnocent = false,
     NameESPSheriff = false,
-    LineESP = false
+    LineESP = false,
+    DistanceESP = false,
+    GunDropESP = false,
+    NameESPTextSize = 18 -- Настройка размера текста
 }
 
 local Murder, Sheriff, Hero
 local roles = {}
-
--- Таблица для BillboardGui (имена)
 local NameESPBillboards = {}
--- Таблица для линий
 local LineESPConnections = {}
+local GunDropHighlight = nil
 
-function IsAlive()
+-- Функция проверки, жив ли игрок
+local function IsAlive(player)
     for name, data in pairs(roles) do
         if player.Name == name then
             return not data.Killed and not data.Dead
@@ -224,21 +220,46 @@ function IsAlive()
 end
 
 -- Функция создания подсветки
-local function CreateHighlight(player)
-    local highlight = player.Character:FindFirstChild("Highlight")
+local function CreateHighlight(target)
+    local highlight = target:FindFirstChild("Highlight")
     if not highlight then
         highlight = Instance.new("Highlight")
-        highlight.Parent = player.Character
-        highlight.Adornee = player.Character
+        highlight.Parent = target
+        highlight.Adornee = target
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     end
     return highlight
 end
 
+-- Функция расчета дистанции
+local function GetDistanceToPlayer(player)
+    local character = player.Character
+    local localCharacter = LocalPlayer.Character
+    if not (character and localCharacter) then return nil end
+    local root = character:FindFirstChild("HumanoidRootPart")
+    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
+    if not (root and localRoot) then return nil end
+    return math.floor((root.Position - localRoot.Position).Magnitude)
+end
+
+local function GetDistanceToGunDrop(gunDrop)
+    local localCharacter = LocalPlayer.Character
+    if not (gunDrop and localCharacter) then return nil end
+    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return nil end
+    return math.floor((gunDrop.Position - localRoot.Position).Magnitude)
+end
+
 -- Функция обновления ESP имен
 local function UpdateNameESP(player)
     local character = player.Character
-    if not character then return end
+    if not character then
+        if NameESPBillboards[player] then
+            NameESPBillboards[player]:Destroy()
+            NameESPBillboards[player] = nil
+        end
+        return
+    end
     
     local head = character:FindFirstChild("Head")
     if not head then return end
@@ -257,7 +278,9 @@ local function UpdateNameESP(player)
         textLabel.Parent = billboard
         textLabel.BackgroundTransparency = 1
         textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.TextScaled = true
+        textLabel.TextScaled = false
+        textLabel.TextSize = ESPConfig.NameESPTextSize
+        textLabel.Font = Enum.Font.SourceSansBold
         textLabel.TextColor3 = Color3.new(1, 1, 1)
         textLabel.Text = ""
         
@@ -269,30 +292,34 @@ local function UpdateNameESP(player)
     
     local shouldShow = false
     local color = Color3.new(1, 1, 1)
-    local roleText = ""
+    local text = player.Name
     
     if player.Name == Murder and IsAlive(player) and ESPConfig.NameESPMurderer then
         color = Color3.fromRGB(255, 0, 0)
-        roleText = "Murder"
         shouldShow = true
     elseif player.Name == Sheriff and IsAlive(player) and ESPConfig.NameESPSheriff then
         color = Color3.fromRGB(0, 0, 255)
-        roleText = "Sheriff"
         shouldShow = true
     elseif ESPConfig.NameESPInnocent and IsAlive(player) and 
            player.Name ~= Murder and player.Name ~= Sheriff and player.Name ~= Hero then
         color = Color3.fromRGB(0, 255, 0)
-        roleText = "Innocent"
         shouldShow = true
     elseif player.Name == Hero and IsAlive(player) and not IsAlive(game.Players[Sheriff]) and ESPConfig.NameESPSheriff then
         color = Color3.fromRGB(255, 250, 0)
-        roleText = "Hero"
         shouldShow = true
     end
     
+    if ESPConfig.DistanceESP and shouldShow then
+        local distance = GetDistanceToPlayer(player)
+        if distance then
+            text = text .. "\n[" .. distance .. " studs]"
+        end
+    end
+    
     if shouldShow then
-        textLabel.Text = player.Name .. " (" .. roleText .. ")"
+        textLabel.Text = text
         textLabel.TextColor3 = color
+        textLabel.TextSize = ESPConfig.NameESPTextSize
         billboard.Enabled = true
     else
         billboard.Enabled = false
@@ -336,7 +363,7 @@ local function UpdateLineESP(player)
     local fromScreen, fromVisible = camera:WorldToViewportPoint(fromPos)
     local toScreen, toVisible = camera:WorldToViewportPoint(toPos)
     
-    if toVisible then
+    if fromVisible and toVisible then
         line.From = Vector2.new(fromScreen.X, fromScreen.Y)
         line.To = Vector2.new(toScreen.X, toScreen.Y)
         
@@ -354,10 +381,76 @@ local function UpdateLineESP(player)
     end
 end
 
+-- Функция обновления GunDrop ESP
+local function UpdateGunDropESP()
+    if not ESPConfig.GunDropESP then
+        if GunDropHighlight then
+            GunDropHighlight:Destroy()
+            GunDropHighlight = nil
+        end
+        return
+    end
+    
+    local gunDrop = nil
+    for _, mapName in ipairs({"ResearchFacility", "Hospital3", "MilBase", "House2", "Workplace", "Mansion2", "BioLab", "Hotel", "Factory", "Bank2", "PoliceStation"}) do
+        local map = workspace:FindFirstChild(mapName)
+        if map and map:FindFirstChild("GunDrop") then
+            gunDrop = map:FindFirstChild("GunDrop")
+            break
+        end
+    end
+    if not gunDrop then
+        gunDrop = workspace:FindFirstChild("GunDrop")
+    end
+    
+    if gunDrop then
+        if not GunDropHighlight then
+            GunDropHighlight = CreateHighlight(gunDrop)
+            GunDropHighlight.FillColor = Color3.fromRGB(255, 215, 0)
+            GunDropHighlight.OutlineColor = Color3.fromRGB(255, 215, 0)
+        end
+        
+        local billboard = GunDropHighlight:FindFirstChild("GunDropESP")
+        if not billboard and ESPConfig.DistanceESP then
+            billboard = Instance.new("BillboardGui")
+            billboard.Name = "GunDropESP"
+            billboard.Parent = gunDrop
+            billboard.Adornee = gunDrop
+            billboard.AlwaysOnTop = true
+            billboard.Size = UDim2.new(0, 200, 0, 50)
+            billboard.StudsOffset = Vector3.new(0, 2, 0)
+            
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Parent = billboard
+            textLabel.BackgroundTransparency = 1
+            textLabel.Size = UDim2.new(1, 0, 1, 0)
+            textLabel.TextScaled = false
+            textLabel.TextSize = ESPConfig.NameESPTextSize
+            textLabel.Font = Enum.Font.SourceSansBold
+            textLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+            textLabel.Text = "GunDrop"
+        end
+        
+        if billboard and ESPConfig.DistanceESP then
+            local distance = GetDistanceToGunDrop(gunDrop)
+            if distance then
+                billboard:FindFirstChild("TextLabel").Text = "GunDrop\n[" .. distance .. " studs]"
+            end
+        end
+        
+        GunDropHighlight.Enabled = true
+    else
+        if GunDropHighlight then
+            GunDropHighlight:Destroy()
+            GunDropHighlight = nil
+        end
+    end
+end
+
 -- Функция обновления подсветки и имен
 local function UpdateHighlights()
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character then
+        if player ~= LocalPlayer and player.Character then
             local highlight = player.Character:FindFirstChild("Highlight")
             
             if not (ESPConfig.HighlightMurderer or ESPConfig.HighlightInnocent or ESPConfig.HighlightSheriff) then
@@ -384,7 +477,7 @@ local function UpdateHighlights()
                 end
                 
                 if shouldHighlight then
-                    highlight = CreateHighlight(player)
+                    highlight = CreateHighlight(player.Character)
                     if highlight then
                         highlight.FillColor = color
                         highlight.OutlineColor = color
@@ -399,19 +492,24 @@ local function UpdateHighlights()
             UpdateLineESP(player)
         end
     end
+    UpdateGunDropESP()
 end
 
+-- Обновление ролей
 local function UpdateRoles()
     roles = ReplicatedStorage:FindFirstChild("GetPlayerData", true):InvokeServer()
+    Murder, Sheriff, Hero = nil, nil, nil
     for name, data in pairs(roles) do
         if data.Role == "Murderer" then
             Murder = name
-        elseif data.Role == 'Sheriff' then
+        elseif data.Role == "Sheriff" then
             Sheriff = name
-        elseif data.Role == 'Hero' then
+        elseif data.Role == "Hero" then
             Hero = name
         end
     end
+    -- Принудительно обновляем ESP при смене ролей
+    UpdateHighlights()
 end
 
 -- Основной цикл
@@ -420,7 +518,7 @@ RunService.RenderStepped:Connect(function()
     
     if ESPConfig.HighlightMurderer or ESPConfig.HighlightInnocent or ESPConfig.HighlightSheriff or
        ESPConfig.NameESPMurderer or ESPConfig.NameESPInnocent or ESPConfig.NameESPSheriff or
-       ESPConfig.LineESP then
+       ESPConfig.LineESP or ESPConfig.DistanceESP or ESPConfig.GunDropESP then
         UpdateHighlights()
     end
 end)
@@ -450,7 +548,12 @@ Players.PlayerAdded:Connect(function(player)
     end)
 end)
 
--- Подсветка
+-- Обновление интерфейса ESP
+Tabs.EspTab:Clear() -- Очищаем существующий EspTab
+
+-- Секция Highlight ESP
+Tabs.EspTab:Section({Title = gradient("Highlight ESP", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2"))})
+
 Tabs.EspTab:Toggle({
     Title = gradient("Highlight Murder", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
     Default = false,
@@ -478,7 +581,9 @@ Tabs.EspTab:Toggle({
     end
 })
 
--- Имена
+-- Секция Names ESP
+Tabs.EspTab:Section({Title = gradient("Names ESP", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2"))})
+
 Tabs.EspTab:Toggle({
     Title = gradient("Murder Name", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
     Default = false,
@@ -506,7 +611,32 @@ Tabs.EspTab:Toggle({
     end
 })
 
--- Линии
+Tabs.EspTab:Slider({
+    Title = "Name Text Size",
+    Value = {Min = 10, Max = 30, Default = 18},
+    Callback = function(value)
+        ESPConfig.NameESPTextSize = value
+        for _, billboard in pairs(NameESPBillboards) do
+            local textLabel = billboard:FindFirstChild("TextLabel")
+            if textLabel then
+                textLabel.TextSize = value
+            end
+        end
+        if GunDropHighlight then
+            local billboard = GunDropHighlight:FindFirstChild("GunDropESP")
+            if billboard then
+                local textLabel = billboard:FindFirstChild("TextLabel")
+                if textLabel then
+                    textLabel.TextSize = value
+                end
+            end
+        end
+    end
+})
+
+-- Секция Tracers ESP
+Tabs.EspTab:Section({Title = gradient("Tracers ESP", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2"))})
+
 Tabs.EspTab:Toggle({
     Title = gradient("Tracers", Color3.fromHex("#ffffff"), Color3.fromHex("#000000")),
     Default = false,
@@ -515,6 +645,31 @@ Tabs.EspTab:Toggle({
         if not state then UpdateHighlights() end
     end
 })
+
+-- Секция Distance ESP
+Tabs.EspTab:Section({Title = gradient("Distance ESP", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2"))})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Show Distance", Color3.fromHex("#ffffff"), Color3.fromHex("#000000")),
+    Default = false,
+    Callback = function(state) 
+        ESPConfig.DistanceESP = state
+        UpdateHighlights()
+    end
+})
+
+-- Секция GunDrop ESP
+Tabs.EspTab:Section({Title = gradient("GunDrop ESP", Color3.fromHex("#b914fa"), Color3.fromHex("#7023c2"))})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("GunDrop ESP", Color3.fromHex("#ffd700"), Color3.fromHex("#b8860b")),
+    Default = false,
+    Callback = function(state) 
+        ESPConfig.GunDropESP = state
+        if not state then UpdateGunDropESP() end
+    end
+})
+
 
 -- Teleport
 Tabs.TeleportTab:Section({Title = gradient("Default TP", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6"))})
