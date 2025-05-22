@@ -269,20 +269,20 @@ local function UpdateNameESP(player)
     
     if player.Name == Murder and IsAlive(player) and ESPConfig.NameESPMurderer then
         color = Color3.fromRGB(255, 0, 0)
-        roleText = "Убийца"
+        roleText = "Murder"
         shouldShow = true
     elseif player.Name == Sheriff and IsAlive(player) and ESPConfig.NameESPSheriff then
         color = Color3.fromRGB(0, 0, 255)
-        roleText = "Шериф"
+        roleText = "Sheriff"
         shouldShow = true
     elseif ESPConfig.NameESPInnocent and IsAlive(player) and 
            player.Name ~= Murder and player.Name ~= Sheriff and player.Name ~= Hero then
         color = Color3.fromRGB(0, 255, 0)
-        roleText = "Невинный"
+        roleText = "Innocent"
         shouldShow = true
     elseif player.Name == Hero and IsAlive(player) and not IsAlive(game.Players[Sheriff]) and ESPConfig.NameESPSheriff then
         color = Color3.fromRGB(255, 250, 0)
-        roleText = "Герой"
+        roleText = "Hero"
         shouldShow = true
     end
     
@@ -438,21 +438,9 @@ Players.PlayerAdded:Connect(function(player)
     end)
 end)
 
--- Интерфейс WindUI (добавьте это в ваш интерфейс)
-local Tabs = {} -- Предполагается, что Tabs определен в вашем скрипте
-Tabs.EspTab = {} -- Предполагается, что EspTab существует
-
-Tabs.EspTab.Toggle = function(self, args) -- Заглушка для Toggle
-    args.Callback(args.Default)
-end
-
-local function gradient(text, color1, color2) -- Заглушка для gradient
-    return text
-end
-
 -- Подсветка
 Tabs.EspTab:Toggle({
-    Title = gradient("Подсветка Убийцы", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Title = gradient("Highlight Murder", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
     Default = false,
     Callback = function(state) 
         ESPConfig.HighlightMurderer = state
@@ -461,7 +449,7 @@ Tabs.EspTab:Toggle({
 })
 
 Tabs.EspTab:Toggle({
-    Title = gradient("Подсветка Невинных", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Title = gradient("Highlight Innocent", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
     Default = false,
     Callback = function(state) 
         ESPConfig.HighlightInnocent = state
@@ -470,7 +458,7 @@ Tabs.EspTab:Toggle({
 })
 
 Tabs.EspTab:Toggle({
-    Title = gradient("Подсветка Шерифа", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Title = gradient("Highlight Sheriff", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
     Default = false,
     Callback = function(state) 
         ESPConfig.HighlightSheriff = state
@@ -480,7 +468,7 @@ Tabs.EspTab:Toggle({
 
 -- Имена
 Tabs.EspTab:Toggle({
-    Title = gradient("Имена Убийцы", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Title = gradient("Murder Name", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
     Default = false,
     Callback = function(state) 
         ESPConfig.NameESPMurderer = state
@@ -489,7 +477,7 @@ Tabs.EspTab:Toggle({
 })
 
 Tabs.EspTab:Toggle({
-    Title = gradient("Имена Невинных", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Title = gradient("Innocent Names", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
     Default = false,
     Callback = function(state) 
         ESPConfig.NameESPInnocent = state
@@ -498,7 +486,7 @@ Tabs.EspTab:Toggle({
 })
 
 Tabs.EspTab:Toggle({
-    Title = gradient("Имена Шерафа", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Title = gradient("Sheriff Name", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
     Default = false,
     Callback = function(state) 
         ESPConfig.NameESPSheriff = state
@@ -508,7 +496,7 @@ Tabs.EspTab:Toggle({
 
 -- Линии
 Tabs.EspTab:Toggle({
-    Title = gradient("Линии к игрокам", Color3.fromHex("#ffffff"), Color3.fromHex("#000000")),
+    Title = gradient("Tracers", Color3.fromHex("#ffffff"), Color3.fromHex("#000000")),
     Default = false,
     Callback = function(state) 
         ESPConfig.LineESP = state
