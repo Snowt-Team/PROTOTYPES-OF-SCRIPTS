@@ -1,0 +1,241 @@
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local GuiService = game:GetService("GuiService")
+
+-- Создание основного GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Name = "RemoteSpyGui"
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 600, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+MainFrame.BackgroundTransparency = 0.3
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+}
+UIGradient.Parent = MainFrame
+
+-- Левая панель для логов
+local LeftPanel = Instance.new("Frame")
+LeftPanel.Size = UDim2.new(0.5, -10, 1, -60)
+LeftPanel.Position = UDim2.new(0, 10, 0, 50)
+LeftPanel.BackgroundTransparency = 1
+LeftPanel.Parent = MainFrame
+
+local LogList = Instance.new("ScrollingFrame")
+LogList.Size = UDim2.new(1, 0, 1, -30)
+LogList.Position = UDim2.new(0, 0, 0, 30)
+LogList.BackgroundTransparency = 1
+LogList.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogList.Parent = LeftPanel
+
+-- Правая панель для кода и кнопок
+local RightPanel = Instance.new("Frame")
+RightPanel.Size = UDim2.new(0.5, -10, 1, -60)
+RightPanel.Position = UDim2.new(0.5, 0, 0, 50)
+RightPanel.BackgroundTransparency = 1
+RightPanel.Parent = MainFrame
+
+local CodeBox = Instance.new("TextBox")
+CodeBox.Size = UDim2.new(1, -20, 0, 200)
+CodeBox.Position = UDim2.new(0, 10, 0, 10)
+CodeBox.BackgroundTransparency = 0.5
+CodeBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+CodeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+CodeBox.TextWrapped = true
+CodeBox.Text = "Выберите лог для отображения кода"
+CodeBox.Parent = RightPanel
+
+local UICornerCode = Instance.new("UICorner")
+UICornerCode.CornerRadius = UDim.new(0, 12)
+UICornerCode.Parent = CodeBox
+
+-- Кнопки
+local ButtonNames = {"Copy Remote", "Copy Code", "Info Function", "Run Code", "Ignore Remote", "Unignore Remote"}
+local Buttons = {}
+for i, name in ipairs(ButtonNames) do
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 120, 0, 30)
+    Button.Position = UDim2.new(0, 10 + (i-1) * 130, 0, 220)
+    Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.Text = name
+    Button.Parent = RightPanel
+    Buttons[name] = Button
+    
+    local UICornerButton = Instance.new("UICorner")
+    UICornerButton.CornerRadius = UDim.new(0, 8)
+    UICornerButton.Parent = Button
+end
+
+-- Поиск
+local SearchBox = Instance.new("TextBox")
+SearchBox.Size = UDim2.new(1, -20, 0, 30)
+SearchBox.Position = UDim2.new(0, 10, 0, 10)
+SearchBox.BackgroundTransparency = 0.5
+SearchBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SearchBox.PlaceholderText = "Поиск..."
+SearchBox.Parent = LeftPanel
+
+local UICornerSearch = Instance.new("UICorner")
+UICornerSearch.CornerRadius = UDim.new(0, 8)
+UICornerSearch.Parent = SearchBox
+
+-- Перемещение GUI на мобильных устройствах
+local dragging = false
+local initialPos = nil
+local initialTouch = nil
+
+UserInputService.TouchStarted:Connect(function(input)
+    if input.UserInputState == Enum.UserInputState.Begin then
+        local guiInset = GuiService:GetGuiInset()
+        local touchPos = input.Position - guiInset
+        if MainFrame.AbsolutePosition.X <= touchPos.X and touchPos.X <= MainFrame.AbsolutePosition.X + MainFrame.AbsoluteSize.X and
+           MainFrame.AbsolutePosition.Y <= touchPos.Y and touchPos.Y <= MainFrame.AbsolutePosition.Y + MainFrame.AbsoluteSize.Y then
+            dragging = true
+            initialPos = MainFrame.Position
+            initialTouch = touchPos
+        end
+    end
+end)
+
+UserInputService.TouchMoved:Connect(function(input)
+    if dragging then
+        local touchPos = input.Position - GuiService:GetGuiInset()
+        local delta = touchPos - initialTouch
+        local newPosX = math.clamp(initialPos.X.Offset + delta.X, -MainFrame.Size.X.Offset, game:GetService("GuiService"):GetScreenResolution().X - MainFrame.Size.X.Offset)
+        local newPosY = math.clamp(initialPos.Y.Offset + delta.Y, -MainFrame.Size.Y.Offset, game:GetService("GuiService"):GetScreenResolution().Y - MainFrame.Size.Y.Offset)
+        MainFrame.Position = UDim2.new(0, newPosX, 0, newPosY)
+    end
+end)
+
+UserInputService.TouchEnded:Connect(function()
+    dragging = false
+end)
+
+-- Логи и их обработка
+local logs = {}
+local selectedLog = nil
+local ignoredRemotes = {}
+
+local function addLog(remoteName)
+    if ignoredRemotes[remoteName] then return end
+    
+    local logButton = Instance.new("TextButton")
+    logButton.Size = UDim2.new(1, -10, 0, 30)
+    logButton.Position = UDim2.new(0, 5, 0, #logs * 35)
+    logButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    logButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    logButton.Text = remoteName
+    logButton.Parent = LogList
+    
+    local UICornerLog = Instance.new("UICorner")
+    UICornerLog.CornerRadius = UDim.new(0, 8)
+    UICornerLog.Parent = logButton
+    
+    table.insert(logs, {button = logButton, name = remoteName})
+    LogList.CanvasSize = UDim2.new(0, 0, 0, #logs * 35)
+    
+    logButton.MouseButton1Click:Connect(function()
+        selectedLog = remoteName
+        CodeBox.Text = "-- Код для " .. remoteName .. "\n" .. "local remote = game." .. remoteName .. "\nremote:FireServer()"
+    end)
+end
+
+-- Функции кнопок
+Buttons["Copy Remote"].MouseButton1Click:Connect(function()
+    if selectedLog then
+        setclipboard(selectedLog)
+    end
+end)
+
+Buttons["Copy Code"].MouseButton1Click:Connect(function()
+    if selectedLog then
+        setclipboard(CodeBox.Text)
+    end
+end)
+
+Buttons["Info Function"].MouseButton1Click:Connect(function()
+    if selectedLog then
+        CodeBox.Text = "-- Информация о " .. selectedLog .. "\n-- Здесь может быть информация о вызовах"
+    end
+end)
+
+Buttons["Run Code"].MouseButton1Click:Connect(function()
+    if selectedLog then
+        local success, err = pcall(function()
+            loadstring(CodeBox.Text)()
+        end)
+        if not success then warn("Ошибка выполнения: " .. err) end
+    end
+end)
+
+Buttons["Ignore Remote"].MouseButton1Click:Connect(function()
+    if selectedLog then
+        ignoredRemotes[selectedLog] = true
+        for i, log in ipairs(logs) do
+            if log.name == selectedLog then
+                log.button:Destroy()
+                table.remove(logs, i)
+                break
+            end
+        end
+        LogList.CanvasSize = UDim2.new(0, 0, 0, #logs * 35)
+    end
+end)
+
+Buttons["Unignore Remote"].MouseButton1Click:Connect(function()
+    if selectedLog then
+        ignoredRemotes[selectedLog] = nil
+    end
+end)
+
+-- Поиск с дебаунсом
+local lastSearch = ""
+local debounce = false
+SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+    if debounce then return end
+    debounce = true
+    wait(0.3)
+    debounce = false
+    
+    local searchText = SearchBox.Text:lower()
+    if searchText == lastSearch then return end
+    lastSearch = searchText
+    
+    for _, log in ipairs(logs) do
+        local visible = searchText == "" or log.name:lower():find(searchText) ~= nil
+        log.button.Visible = visible
+    end
+end)
+
+-- Пример добавления логов
+addLog("ReplicatedStorage.RemoteEvent")
+addLog("ReplicatedStorage.RemoteFunction")
+
+-- Обработка ошибок
+local function safeCall(func)
+    local success, err = pcall(func)
+    if not success then
+        warn("Ошибка: " .. err)
+    end
+end
+
+-- Масштабирование для мобильных устройств
+local scale = Instance.new("UIScale")
+scale.Parent = ScreenGui
+scale.Scale = math.min(1, math.min(game:GetService("GuiService"):GetScreenResolution().X / 600, game:GetService("GuiService"):GetScreenResolution().Y / 400))
+
+-- Конец скрипта
