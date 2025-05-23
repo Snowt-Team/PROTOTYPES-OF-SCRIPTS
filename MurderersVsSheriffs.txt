@@ -1,0 +1,932 @@
+-- WindUI
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local CurrentCamera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local TextChatService = game:GetService("TextChatService")
+
+-- ESP Objects
+local espObjects = {}
+
+-- Gradient Function
+local function gradient(text, startColor, endColor)
+    local result = ""
+    local length = #text
+
+    for i = 1, length do
+        local t = (i - 1) / math.max(length - 1, 1)
+        local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
+        local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
+        local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
+
+        local char = text:sub(i, i)
+        result = result .. "<font color=\"rgb(" .. r ..", " .. g .. ", " .. b .. ")\">" .. char .. "</font>"
+    end
+
+    return result
+end
+
+-- Confirmation Popup
+local Confirmed = false
+WindUI:Popup({
+    Title = gradient("PRIVATE SCRIPT", Color3.fromHex("#eb1010"), Color3.fromHex("#1023eb")),
+    Icon = "info",
+    Content = gradient("This script made by", Color3.fromHex("#10eb3c"), Color3.fromHex("#67c97a")) .. gradient(" SnowT", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Buttons = {
+        {
+            Title = gradient("Cancel", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+            Callback = function() end,
+            Variant = "Tertiary",
+        },
+        {
+            Title = gradient("Load", Color3.fromHex("#90f09e"), Color3.fromHex("#13ed34")),
+            Callback = function() Confirmed = true end,
+            Variant = "Secondary",
+        }
+    }
+})
+
+repeat task.wait() until Confirmed
+
+WindUI:Notify({
+    Title = gradient("SCRIPT SYSTEM", Color3.fromHex("#eb1010"), Color3.fromHex("#1023eb")),
+    Content = "Script successfully loaded",
+    Icon = "check-circle",
+    Duration = 3,
+})
+
+-- Create Window
+local Window = WindUI:CreateWindow({
+    Title = gradient("PRIVATE SCRIPT", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Icon = "infinity",
+    Author = gradient("MurderersVsSheriffs", Color3.fromHex("#1bf2b2"), Color3.fromHex("#1bcbf2")),
+    Folder = "WindUI",
+    Size = UDim2.fromOffset(300, 270),
+    Transparent = true,
+    Theme = "Dark",
+    SideBarWidth = 200,
+    UserEnabled = true,
+    HasOutline = true,
+})
+
+-- Open Button
+Window:EditOpenButton({
+    Title = "Open UI",
+    Icon = "monitor",
+    CornerRadius = UDim.new(2, 6),
+    StrokeThickness = 2,
+    Color = ColorSequence.new(
+        Color3.fromHex("1E213D"),
+        Color3.fromHex("1F75FE")
+    ),
+    Draggable = true,
+})
+
+-- Tabs
+local Tabs = {
+    MainTab = Window:Tab({ Title = gradient("MAIN", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "terminal" }),
+    CharacterTab = Window:Tab({ Title = gradient("CHARACTER", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "file-cog" }),
+    TeleportTab = Window:Tab({ Title = gradient("TELEPORT", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "user" }),
+    EspTab = Window:Tab({ Title = gradient("ESP", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "eye" }),
+    AimbotTab = Window:Tab({ Title = gradient("AIMBOT", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "arrow-right" }),
+    CombatTab = Window:Tab({ Title = gradient("COMBAT", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "user"}),
+    gh = Window:Divider(),
+    ServerTab = Window:Tab({ Title = gradient("SERVER", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "atom" }),
+    SettingsTab = Window:Tab({ Title = gradient("SETTINGS", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "code" }),
+    b = Window:Divider(),
+    WindowTab = Window:Tab({ Title = gradient("CONFIGURATION", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "settings", Desc = "Manage window settings and file configurations." }),
+    CreateThemeTab = Window:Tab({ Title = gradient("THEMES", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "palette", Desc = "Design and apply custom themes." }),
+}
+
+-- Character Settings
+local CharacterSettings = {
+    WalkSpeed = {Value = 16, Default = 16, Locked = false},
+    JumpPower = {Value = 50, Default = 50, Locked = false}
+}
+
+local function updateCharacter()
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        if not CharacterSettings.WalkSpeed.Locked then
+            humanoid.WalkSpeed = CharacterSettings.WalkSpeed.Value
+        end
+        if not CharacterSettings.JumpPower.Locked then
+            humanoid.JumpPower = CharacterSettings.JumpPower.Value
+        end
+    end
+end
+
+Tabs.CharacterTab:Section({Title = gradient("Walkspeed", Color3.fromHex("#ff0000"), Color3.fromHex("#300000"))})
+Tabs.CharacterTab:Slider({
+    Title = "Walkspeed",
+    Value = {Min = 0, Max = 200, Default = 16},
+    Callback = function(value)
+        CharacterSettings.WalkSpeed.Value = value
+        updateCharacter()
+    end
+})
+
+Tabs.CharacterTab:Button({
+    Title = "Reset walkspeed",
+    Callback = function()
+        CharacterSettings.WalkSpeed.Value = CharacterSettings.WalkSpeed.Default
+        updateCharacter()
+    end
+})
+
+Tabs.CharacterTab:Toggle({
+    Title = "Block walkspeed",
+    Default = false,
+    Callback = function(state)
+        CharacterSettings.WalkSpeed.Locked = state
+        updateCharacter()
+    end
+})
+
+Tabs.CharacterTab:Section({Title = gradient("JumpPower", Color3.fromHex("#001aff"), Color3.fromHex("#020524"))})
+Tabs.CharacterTab:Slider({
+    Title = "Jumppower",
+    Value = {Min = 0, Max = 200, Default = 50},
+    Callback = function(value)
+        CharacterSettings.JumpPower.Value = value
+        updateCharacter()
+    end
+})
+
+Tabs.CharacterTab:Button({
+    Title = "Reset jumppower",
+    Callback = function()
+        CharacterSettings.JumpPower.Value = CharacterSettings.JumpPower.Default
+        updateCharacter()
+    end
+})
+
+Tabs.CharacterTab:Toggle({
+    Title = "Block jumppower",
+    Default = false,
+    Callback = function(state)
+        CharacterSettings.JumpPower.Locked = state
+        updateCharacter()
+    end
+})
+
+-- Teleport
+Tabs.TeleportTab:Section({Title = gradient("Teleport to players", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6"))})
+
+local teleportTarget = nil
+local teleportDropdown = nil
+
+local function updateTeleportPlayers()
+    local playersList = {"Select Player"}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(playersList, player.Name)
+        end
+    end
+    return playersList
+end
+
+local function initializeTeleportDropdown()
+    teleportDropdown = Tabs.TeleportTab:Dropdown({
+        Title = "Players",
+        Values = updateTeleportPlayers(),
+        Value = "Select Player",
+        Callback = function(selected)
+            if selected ~= "Select Player" then
+                teleportTarget = Players:FindFirstChild(selected)
+            else
+                teleportTarget = nil
+            end
+        end
+    })
+end
+
+initializeTeleportDropdown()
+
+Players.PlayerAdded:Connect(function(player)
+    task.wait(1)
+    if teleportDropdown then
+        teleportDropdown:Refresh(updateTeleportPlayers())
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if teleportDropdown then
+        teleportDropdown:Refresh(updateTeleportPlayers())
+    end
+end)
+
+local function teleportToPlayer()
+    if teleportTarget and teleportTarget.Character then
+        local targetRoot = teleportTarget.Character:FindFirstChild("HumanoidRootPart")
+        local localRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        
+        if targetRoot and localRoot then
+            localRoot.CFrame = targetRoot.CFrame
+            WindUI:Notify({
+                Title = "Teleport system",
+                Content = "Teleported to "..teleportTarget.Name,
+                Icon = "check-circle",
+                Duration = 3
+            })
+        end
+    else
+        WindUI:Notify({
+            Title = "Error",
+            Content = "Target not found",
+            Icon = "x-circle",
+            Duration = 3
+        })
+    end
+end
+
+Tabs.TeleportTab:Button({
+    Title = "Teleport to player",
+    Callback = teleportToPlayer
+})
+
+Tabs.TeleportTab:Button({
+    Title = "Update players list",
+    Callback = function()
+        teleportDropdown:Refresh(updateTeleportPlayers())
+    end
+})
+
+-- Team Detection
+local function getPlayerTeam(player)
+    for _, channel in pairs(TextChatService.TextChannels:GetChildren()) do
+        if channel:IsA("TextChannel") then
+            local playerName = string.match(channel.Name, "%.(.+)$")
+            if playerName and playerName == player.Name then
+                local teamName = string.match(channel.Name, "^RBXTeam(.+)%.")
+                if teamName then
+                    return {
+                        Name = teamName,
+                        TeamColor = teamName == "Lily white" and BrickColor.new("Lily white") or BrickColor.new("Quill grey")
+                    }
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function isEnemy(player)
+    if player == LocalPlayer then return false end
+    
+    local localTeam = getPlayerTeam(LocalPlayer)
+    local playerTeam = getPlayerTeam(player)
+    
+    if not localTeam or not playerTeam then 
+        return false
+    end
+    
+    return localTeam.Name ~= playerTeam.Name
+end
+
+-- ESP Settings
+local espSettings = {
+    Highlight = {
+        Enabled = false,
+        Transparency = 0.5,
+        Color = Color3.fromRGB(255, 0, 0),
+        TeamColor = true
+    },
+    Names = {
+        Enabled = false,
+        Size = 15,
+        Color = Color3.fromRGB(255, 0, 0)
+    },
+    Distance = {
+        Enabled = false,
+        Size = 15,
+        Color = Color3.fromRGB(255, 0, 0)
+    },
+    TeamCheck = true
+}
+
+-- ESP Implementation
+local function createEsp(player)
+    if player == LocalPlayer or not isEnemy(player) then return end
+    
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    
+    local highlightColor = espSettings.Highlight.TeamColor and getPlayerTeam(player).TeamColor.Color or espSettings.Highlight.Color
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = player.Name .. "_Highlight"
+    highlight.Adornee = character
+    highlight.FillColor = highlightColor
+    highlight.FillTransparency = espSettings.Highlight.Transparency
+    highlight.OutlineColor = highlightColor
+    highlight.OutlineTransparency = 0
+    highlight.Parent = CoreGui
+    highlight.Enabled = espSettings.Highlight.Enabled
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = player.Name .. "_Billboard"
+    billboard.Adornee = humanoidRootPart
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = CoreGui
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = espSettings.Names.Color
+    nameLabel.TextSize = espSettings.Names.Size
+    nameLabel.Text = player.Name
+    nameLabel.Visible = espSettings.Names.Enabled
+    nameLabel.Parent = billboard
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Name = "DistanceLabel"
+    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.TextColor3 = espSettings.Distance.Color
+    distanceLabel.TextSize = espSettings.Distance.Size
+    distanceLabel.Visible = espSettings.Distance.Enabled
+    distanceLabel.Parent = billboard
+    
+    espObjects[player] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        NameLabel = nameLabel,
+        DistanceLabel = distanceLabel,
+        Character = character
+    }
+    
+    coroutine.wrap(function()
+        while character and character.Parent and espObjects[player] do
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - humanoidRootPart.Position).Magnitude
+                distanceLabel.Text = string.format("%.1f studs", distance)
+            end
+            task.wait(0.1)
+        end
+    end)()
+end
+
+local function toggleEsp()
+    for _, player in pairs(Players:GetPlayers()) do
+        if espObjects[player] then
+            local isEnemyPlayer = isEnemy(player)
+            espObjects[player].Highlight.Enabled = espSettings.Highlight.Enabled and isEnemyPlayer
+            espObjects[player].NameLabel.Visible = espSettings.Names.Enabled and isEnemyPlayer
+            espObjects[player].DistanceLabel.Visible = espSettings.Distance.Enabled and isEnemyPlayer
+            
+            if isEnemyPlayer and espSettings.Highlight.TeamColor then
+                local team = getPlayerTeam(player)
+                if team then
+                    espObjects[player].Highlight.FillColor = team.TeamColor.Color
+                    espObjects[player].Highlight.OutlineColor = team.TeamColor.Color
+                end
+            else
+                espObjects[player].Highlight.FillColor = espSettings.Highlight.Color
+                espObjects[player].Highlight.OutlineColor = espSettings.Highlight.Color
+            end
+        elseif isEnemy(player) then
+            createEsp(player)
+        end
+    end
+end
+
+-- Initialize ESP
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        createEsp(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function()
+            createEsp(player)
+        end)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if espObjects[player] then
+        espObjects[player].Highlight:Destroy()
+        espObjects[player].Billboard:Destroy()
+        espObjects[player] = nil
+    end
+end)
+
+-- ESP Tab
+Tabs.EspTab:Section({
+    Title = gradient("ESP Settings", Color3.fromHex("#FF00FF"), Color3.fromHex("#800080"))
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Team Check", Color3.fromHex("#FF00FF"), Color3.fromHex("#800080")),
+    Default = true,
+    Callback = function(state)
+        espSettings.TeamCheck = state
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Section({
+    Title = gradient("Highlight Settings", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9"))
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Enable Highlight", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Default = false,
+    Callback = function(state)
+        espSettings.Highlight.Enabled = state
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Use Team Colors", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Default = true,
+    Callback = function(state)
+        espSettings.Highlight.TeamColor = state
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Slider({
+    Title = gradient("Highlight Transparency", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Step = 0.1,
+    Value = {Min = 0, Max = 1, Default = 0.5},
+    Callback = function(value)
+        espSettings.Highlight.Transparency = value
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Colorpicker({
+    Title = gradient("Highlight Color", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Default = Color3.fromRGB(255, 0, 0),
+    Transparency = 0,
+    Callback = function(color)
+        espSettings.Highlight.Color = color
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Section({
+    Title = gradient("Name ESP Settings", Color3.fromHex("#e80909"), Color3.fromHex("#630404"))
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Enable Names", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Default = false,
+    Callback = function(state)
+        espSettings.Names.Enabled = state
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Slider({
+    Title = gradient("Name Size", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Value = {Min = 5, Max = 25, Default = 15},
+    Callback = function(value)
+        espSettings.Names.Size = value
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Colorpicker({
+    Title = gradient("Name Color", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Default = Color3.fromRGB(255, 0, 0),
+    Transparency = 0,
+    Callback = function(color)
+        espSettings.Names.Color = color
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Section({
+    Title = gradient("Distance ESP Settings", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c"))
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Enable Distance", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Default = false,
+    Callback = function(state)
+        espSettings.Distance.Enabled = state
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Slider({
+    Title = gradient("Distance Size", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Value = {Min = 5, Max = 25, Default = 15},
+    Callback = function(value)
+        espSettings.Distance.Size = value
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Colorpicker({
+    Title = gradient("Distance Color", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Default = Color3.fromRGB(255, 0, 0),
+    Transparency = 0,
+    Callback = function(color)
+        espSettings.Distance.Color = color
+        toggleEsp()
+    end
+})
+
+-- Aimbot Settings
+local aimbotSettings = {
+    Enabled = false,
+    Target = "Nearest",
+    SpectateMode = false,
+    LockCameraNearest = false,
+    ShowFOV = false,
+    FOVSize = 50,
+    FOVColor = Color3.fromRGB(255, 0, 0),
+    Smoothness = 5,
+    TeamCheck = true
+}
+
+local silentAimSettings = {
+    Enabled = false,
+    HitboxSize = 9999
+}
+
+-- FOV Circle
+local fovCircle = Drawing.new("Circle")
+fovCircle.Visible = false
+fovCircle.Radius = aimbotSettings.FOVSize
+fovCircle.Color = aimbotSettings.FOVColor
+fovCircle.Thickness = 2
+fovCircle.Position = Vector2.new(CurrentCamera.ViewportSize.X / 2, CurrentCamera.ViewportSize.Y / 2)
+
+local function updateFOVCircle()
+    fovCircle.Visible = aimbotSettings.ShowFOV
+    fovCircle.Radius = aimbotSettings.FOVSize
+    fovCircle.Color = aimbotSettings.FOVColor
+    fovCircle.Position = Vector2.new(CurrentCamera.ViewportSize.X / 2, CurrentCamera.ViewportSize.Y / 2)
+end
+
+-- Aimbot Target Finding
+local function findTarget()
+    if aimbotSettings.Target == "None" and not aimbotSettings.LockCameraNearest then return nil end
+    
+    local closestPlayer = nil
+    local closestDistance = math.huge
+    local camera = workspace.CurrentCamera
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and isEnemy(player) then
+            local character = player.Character
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            
+            if humanoidRootPart then
+                local screenPoint, onScreen = camera:WorldToViewportPoint(humanoidRootPart.Position)
+                
+                if onScreen then
+                    local distance = (humanoidRootPart.Position - (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position or Vector3.new())).Magnitude
+                    if aimbotSettings.LockCameraNearest or aimbotSettings.Target == "Nearest" then
+                        if distance < closestDistance then
+                            closestDistance = distance
+                            closestPlayer = player
+                        end
+                    elseif aimbotSettings.Target == player.Name then
+                        return player
+                    end
+                end
+            end
+        end
+    end
+    
+    return closestPlayer
+end
+
+-- Silent Aimbot Implementation
+local function applySilentAim()
+    if not silentAimSettings.Enabled then return end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and isEnemy(player) and player.Character then
+            local character = player.Character
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart then
+                if not humanoidRootPart:FindFirstChild("OriginalSize") then
+                    local originalSize = Instance.new("Vector3Value")
+                    originalSize.Name = "OriginalSize"
+                    originalSize.Value = humanoidRootPart.Size
+                    originalSize.Parent = humanoidRootPart
+                end
+                
+                humanoidRootPart.Size = Vector3.new(silentAimSettings.HitboxSize, silentAimSettings.HitboxSize, silentAimSettings.HitboxSize)
+                humanoidRootPart.Transparency = 0.9
+                humanoidRootPart.CanCollide = false
+            end
+        end
+    end
+end
+
+local function restoreHitboxes()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local humanoidRootPart = player.Character.HumanoidRootPart
+            local originalSize = humanoidRootPart:FindFirstChild("OriginalSize")
+            if originalSize then
+                humanoidRootPart.Size = originalSize.Value
+                humanoidRootPart.Transparency = 0
+                humanoidRootPart.CanCollide = true
+                originalSize:Destroy()
+            end
+        end
+    end
+end
+
+-- Aimbot Tab
+Tabs.AimbotTab:Section({
+    Title = gradient("Aimbot Settings", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6"))
+})
+
+Tabs.AimbotTab:Toggle({
+    Title = gradient("Enable Aimbot", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Default = false,
+    Callback = function(state)
+        aimbotSettings.Enabled = state
+    end
+})
+
+Tabs.AimbotTab:Toggle({
+    Title = gradient("Team Check", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Default = true,
+    Callback = function(state)
+        aimbotSettings.TeamCheck = state
+    end
+})
+
+local playerNames = {"None", "Nearest"}
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        table.insert(playerNames, player.Name)
+    end
+end
+
+Tabs.AimbotTab:Dropdown({
+    Title = gradient("Target Selection", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Values = playerNames,
+    Value = "Nearest",
+    Callback = function(option)
+        aimbotSettings.Target = option
+    end
+})
+
+Tabs.AimbotTab:Toggle({
+    Title = gradient("Show FOV Circle", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Default = false,
+    Callback = function(state)
+        aimbotSettings.ShowFOV = state
+        updateFOVCircle()
+    end
+})
+
+Tabs.AimbotTab:Slider({
+    Title = gradient("FOV Size", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Step = 1,
+    Value = {Min = 10, Max = 200, Default = 50},
+    Callback = function(value)
+        aimbotSettings.FOVSize = value
+        updateFOVCircle()
+    end
+})
+
+Tabs.AimbotTab:Colorpicker({
+    Title = gradient("FOV Color", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Default = Color3.fromRGB(255, 0, 0),
+    Transparency = 0,
+    Callback = function(color)
+        aimbotSettings.FOVColor = color
+        updateFOVCircle()
+    end
+})
+
+Tabs.AimbotTab:Toggle({
+    Title = gradient("Lock Camera to Nearest Enemy", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Default = false,
+    Callback = function(state)
+        aimbotSettings.LockCameraNearest = state
+        if state then
+            aimbotSettings.Target = "None"
+            Tabs.AimbotTab:RefreshDropdown("Target Selection", {"None", "Nearest"})
+        else
+            local playerNames = {"None", "Nearest"}
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer then
+                    table.insert(playerNames, player.Name)
+                end
+            end
+            Tabs.AimbotTab:RefreshDropdown("Target Selection", playerNames)
+        end
+    end
+})
+
+Tabs.AimbotTab:Slider({
+    Title = gradient("Smoothness", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Step = 0.1,
+    Value = {Min = 1, Max = 10, Default = 5},
+    Callback = function(value)
+        aimbotSettings.Smoothness = value
+    end
+})
+
+Tabs.AimbotTab:Toggle({
+    Title = gradient("Spectate Mode", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Default = false,
+    Callback = function(state)
+        aimbotSettings.SpectateMode = state
+    end
+})
+
+Tabs.AimbotTab:Section({
+    Title = gradient("Silent Aimbot", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6"))
+})
+
+Tabs.AimbotTab:Toggle({
+    Title = gradient("Enable Silent Aimbot", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6")),
+    Default = false,
+    Callback = function(state)
+        silentAimSettings.Enabled = state
+        if not state then
+            restoreHitboxes()
+        end
+    end
+})
+
+-- Aimbot Loop
+RunService.RenderStepped:Connect(function()
+    if aimbotSettings.Enabled or aimbotSettings.LockCameraNearest then
+        local target = findTarget()
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPos = target.Character.HumanoidRootPart.Position
+            local camera = workspace.CurrentCamera
+            
+            if aimbotSettings.LockCameraNearest then
+                local targetCFrame = CFrame.new(camera.CFrame.Position, targetPos)
+                camera.CFrame = camera.CFrame:Lerp(targetCFrame, 1/aimbotSettings.Smoothness)
+            elseif aimbotSettings.Enabled then
+                local screenPoint = camera:WorldToScreenPoint(targetPos)
+                local targetVector = Vector2.new(screenPoint.X, screenPoint.Y)
+                local center = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
+                local delta = (targetVector - center) / aimbotSettings.Smoothness
+                mousemoverel(delta.X, delta.Y)
+            end
+            
+            if aimbotSettings.SpectateMode then
+                workspace.CurrentCamera.CameraSubject = target.Character.Humanoid
+            end
+        elseif aimbotSettings.SpectateMode then
+            workspace.CurrentCamera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character.Humanoid or nil
+        end
+    end
+    
+    if silentAimSettings.Enabled then
+        applySilentAim()
+    else
+        restoreHitboxes()
+    end
+end)
+
+-- Player Management
+Players.PlayerAdded:Connect(function(player)
+    table.insert(playerNames, player.Name)
+    Tabs.AimbotTab:RefreshDropdown("Target Selection", playerNames)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if espObjects[player] then
+        espObjects[player].Highlight:Destroy()
+        espObjects[player].Billboard:Destroy()
+        espObjects[player] = nil
+    end
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local originalSize = player.Character.HumanoidRootPart:FindFirstChild("OriginalSize")
+        if originalSize then
+            player.Character.HumanoidRootPart.Size = originalSize.Value
+            player.Character.HumanoidRootPart.Transparency = 0
+            player.Character.HumanoidRootPart.CanCollide = true
+            originalSize:Destroy()
+        end
+    end
+    for i, name in ipairs(playerNames) do
+        if name == player.Name then
+            table.remove(playerNames, i)
+            break
+        end
+    end
+    Tabs.AimbotTab:RefreshDropdown("Target Selection", playerNames)
+end)
+
+-- Combat Settings
+local combatSettings = {
+    AutoShoot = false,
+    ShootDelay = 0.1,
+    TeamCheck = true
+}
+
+local function shootNearestEnemy()
+    local target = nil
+    local closestDistance = math.huge
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and (not combatSettings.TeamCheck or isEnemy(player)) then
+            local character = player.Character
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            
+            if humanoidRootPart then
+                local distance = (humanoidRootPart.Position - (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position or Vector3.new())).Magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    target = player
+                end
+            end
+        end
+    end
+    
+    if target and target.Character then
+        local humanoidRootPart = target.Character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            local args = {
+                [1] = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position or Vector3.new(),
+                [2] = humanoidRootPart.Position,
+                [3] = workspace:FindFirstChild("Rooftop") and workspace.Rooftop:FindFirstChild("Environment") and workspace.Rooftop.Environment:FindFirstChild("Part") or workspace,
+                [4] = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position or Vector3.new() + humanoidRootPart.Position) / 2
+            }
+            
+            game:GetService("ReplicatedStorage").Remotes.Shoot:FireServer(unpack(args))
+            
+            WindUI:Notify({
+                Title = "Combat System",
+                Content = "Shot at "..target.Name,
+                Icon = "crosshair",
+                Duration = 2
+            })
+        end
+    else
+        WindUI:Notify({
+            Title = "Combat System",
+            Content = "No valid target found",
+            Icon = "x-circle",
+            Duration = 2
+        })
+    end
+end
+
+Tabs.CombatTab:Section({
+    Title = gradient("Combat Settings", Color3.fromHex("#FF0000"), Color3.fromHex("#800000"))
+})
+
+Tabs.CombatTab:Toggle({
+    Title = gradient("Team Check", Color3.fromHex("#FF0000"), Color3.fromHex("#800000")),
+    Default = true,
+    Callback = function(state)
+        combatSettings.TeamCheck = state
+    end
+})
+
+Tabs.CombatTab:Button({
+    Title = gradient("Shoot Nearest Enemy", Color3.fromHex("#FF0000"), Color3.fromHex("#800000")),
+    Callback = shootNearestEnemy
+})
+
+Tabs.CombatTab:Toggle({
+    Title = gradient("Auto Shoot", Color3.fromHex("#FF0000"), Color3.fromHex("#800000")),
+    Default = false,
+    Callback = function(state)
+        combatSettings.AutoShoot = state
+        if state then
+            coroutine.wrap(function()
+                while combatSettings.AutoShoot do
+                    shootNearestEnemy()
+                    task.wait(combatSettings.ShootDelay)
+                end
+            end)()
+        end
+    end
+})
+
+Tabs.CombatTab:Slider({
+    Title = gradient("Shoot Delay", Color3.fromHex("#FF0000"), Color3.fromHex("#800000")),
+    Step = 0.05,
+    Value = {Min = 0.05, Max = 1, Default = 0.1},
+    Callback = function(value)
+        combatSettings.ShootDelay = value
+    end
+})
