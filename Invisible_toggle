@@ -1,0 +1,39 @@
+-- Services
+local UserInputService = game:GetService("UserInputService")
+
+-- GUI Setup
+local screenGui = script.Parent.Parent -- Assumes this script is inside a Frame under ScreenGui
+local frame = script.Parent -- The Frame to be dragged
+
+-- Configure Frame (75x75 pixels with blue border)
+frame.Size = UDim2.new(0, 75, 0, 75) -- 75x75 pixels
+frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White background
+frame.BorderColor3 = Color3.fromRGB(0, 0, 255) -- Blue border
+frame.BorderSizePixel = 2 -- Border thickness
+frame.Position = UDim2.new(0.5, -37.5, 0.5, -37.5) -- Center the frame
+
+-- Add UIDragDetector for dragging
+local dragDetector = Instance.new("UIDragDetector")
+dragDetector.Parent = frame
+dragDetector.DragStyle = Enum.UIDragDetectorDragStyle.TranslatePlane -- Dragging in 2D plane
+
+-- Function to keep the frame within screen boundaries
+local function clampToScreen(position)
+    local screenSize = frame.Parent.AbsoluteSize
+    local frameSize = frame.AbsoluteSize
+    
+    local minX = 0
+    local maxX = screenSize.X - frameSize.X
+    local minY = 0
+    local maxY = screenSize.Y - frameSize.Y
+    
+    local newX = math.clamp(position.X.Offset, minX, maxX)
+    local newY = math.clamp(position.Y.Offset, minY, maxY)
+    
+    return UDim2.new(0, newX, 0, newY)
+end
+
+-- Connect to DragUpdate to enforce boundaries
+dragDetector.DragUpdate:Connect(function(detector, proposedPosition, proposedRotation)
+    frame.Position = clampToScreen(proposedPosition)
+end)
