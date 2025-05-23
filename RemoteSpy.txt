@@ -1,0 +1,425 @@
+-- Remote Spy с улучшенным UI, поддержкой мобильных устройств и дополнительными функциями
+-- Для использования: вставьте в LocalScript в ReplicatedFirst или StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- Настройки
+local Settings = {
+    Enabled = true,
+    CopyToClipboard = true,
+    LogToFile = false,
+    Blacklist = { ["CharacterSoundEvent"] = true },
+    ShowReturns = true,
+    ShowScript = true,
+}
+
+-- Список игнорируемых Remote'ов
+local IgnoredRemotes = Settings.Blacklist
+local RemoteList = {} -- Список всех Remote'ов
+
+-- Создаем UI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RemoteSpyGui"
+ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0.5, 0, 0.7, 0) -- Увеличенное окно
+Frame.Position = UDim2.new(0.25, 0, 0.15, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+Frame.BorderSizePixel = 0
+Frame.ClipsDescendants = true
+Frame.Parent = ScreenGui
+Frame.Active = true
+Frame.Draggable = true
+
+-- Закругленные углы и тень
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = Frame
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(100, 100, 100)
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.Parent = Frame
+
+-- Заголовок
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+Title.Text = "Remote Spy"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 20
+Title.Font = Enum.Font.GothamBold
+Title.TextStrokeTransparency = 0.7
+Title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+Title.Parent = Frame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = Title
+
+-- Кнопка закрытия
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 40, 0, 40)
+CloseButton.Position = UDim2.new(1, -40, 0, 0)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseButton.Text = "✖"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 18
+CloseButton.Font = Enum.Font.Gotham
+CloseButton.Parent = Frame
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.Parent = CloseButton
+
+-- Вкладка Remote'ов (слева)
+local RemoteTab = Instance.new("ScrollingFrame")
+RemoteTab.Size = UDim2.new(0.3, -10, 1, -90)
+RemoteTab.Position = UDim2.new(0, 5, 0, 45)
+RemoteTab.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+RemoteTab.BorderSizePixel = 0
+RemoteTab.ScrollBarThickness = 4
+RemoteTab.CanvasSize = UDim2.new(0, 0, 0, 0)
+RemoteTab.Parent = Frame
+
+local RemoteTabCorner = Instance.new("UICorner")
+RemoteTabCorner.CornerRadius = UDim.new(0, 8)
+RemoteTabCorner.Parent = RemoteTab
+
+local RemoteListLayout = Instance.new("UIListLayout")
+RemoteListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+RemoteListLayout.Padding = UDim.new(0, 5)
+RemoteListLayout.Parent = RemoteTab
+
+-- Поле для логов (справа)
+local LogFrame = Instance.new("ScrollingFrame")
+LogFrame.Size = UDim2.new(0.7, -15, 1, -90)
+LogFrame.Position = UDim2.new(0.3, 10, 0, 45)
+LogFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+LogFrame.BorderSizePixel = 0
+LogFrame.ScrollBarThickness = 4
+LogFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogFrame.Parent = Frame
+
+local LogFrameCorner = Instance.new("UICorner")
+LogFrameCorner.CornerRadius = UDim.new(0, 8)
+LogFrameCorner.Parent = LogFrame
+
+local LogLayout = Instance.new("UIListLayout")
+LogLayout.SortOrder = Enum.SortOrder.LayoutOrder
+LogLayout.Padding = UDim.new(0, 5)
+LogLayout.Parent = LogFrame
+
+-- Нижняя панель с кнопками
+local ButtonFrame = Instance.new("Frame")
+ButtonFrame.Size = UDim2.new(1, -10, 0, 40)
+ButtonFrame.Position = UDim2.new(0, 5, 1, -45)
+ButtonFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+ButtonFrame.Parent = Frame
+
+local ButtonFrameCorner = Instance.new("UICorner")
+ButtonFrameCorner.CornerRadius = UDim.new(0, 8)
+ButtonFrameCorner.Parent = ButtonFrame
+
+local ButtonLayout = Instance.new("UIListLayout")
+ButtonLayout.FillDirection = Enum.FillDirection.Horizontal
+ButtonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ButtonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+ButtonLayout.Padding = UDim.new(0, 5)
+ButtonLayout.Parent = ButtonFrame
+
+-- Создание кнопок
+local ButtonNames = {"Copy Code", "Copy Remote", "Run Remote", "Info Function", "Ignore Remote", "Unignore Remote"}
+local Buttons = {}
+
+for _, name in ipairs(ButtonNames) do
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 100, 0, 30)
+    Button.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    Button.Text = name
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextSize = 14
+    Button.Font = Enum.Font.Gotham
+    Button.Parent = ButtonFrame
+
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(0, 6)
+    ButtonCorner.Parent = Button
+
+    local ButtonStroke = Instance.new("UIStroke")
+    ButtonStroke.Thickness = 1
+    ButtonStroke.Color = Color3.fromRGB(100, 100, 100)
+    ButtonStroke.Parent = Button
+
+    Buttons[name] = Button
+end
+
+-- Поддержка сенсорного ввода для перетаскивания
+local dragging, dragInput, dragStart, startPos
+Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+Frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if dragging and dragInput then
+        local delta = dragInput.Position - dragStart
+        Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Анимация нажатий на кнопки
+local function AnimateButton(button)
+    local originalSize = button.Size
+    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+    local pressTween = TweenService:Create(button, tweenInfo, {Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset - 5, originalSize.Y.Scale, originalSize.Y.Offset - 5)})
+    local releaseTween = TweenService:Create(button, tweenInfo, {Size = originalSize})
+
+    button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            pressTween:Play()
+        end
+    end)
+
+    button.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            releaseTween:Play()
+        end
+    end)
+end
+
+for _, button in pairs(Buttons) do
+    AnimateButton(button)
+end
+
+-- Закрытие UI
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui.Enabled = false
+end)
+
+-- Функция для форматирования аргументов
+local function ValueToString(value)
+    local Type = typeof(value)
+    if Type == "Instance" then
+        return value:GetFullName()
+    elseif Type == "table" then
+        return HttpService:JSONEncode(value)
+    else
+        return tostring(value)
+    end
+end
+
+-- Функция для создания записи Remote в левой вкладке
+local function AddRemoteToTab(Remote)
+    if RemoteList[Remote] then return end
+    RemoteList[Remote] = true
+
+    local RemoteEntry = Instance.new("TextButton")
+    RemoteEntry.Size = UDim2.new(1, -10, 0, 30)
+    RemoteEntry.BackgroundColor3 = IgnoredRemotes[Remote.Name] and Color3.fromRGB(80, 80, 80) or Color3.fromRGB(50, 50, 60)
+    RemoteEntry.Text = Remote.Name
+    RemoteEntry.TextColor3 = Color3.fromRGB(255, 255, 255)
+    RemoteEntry.TextSize = 14
+    RemoteEntry.Font = Enum.Font.Gotham
+    RemoteEntry.TextXAlignment = Enum.TextXAlignment.Left
+    RemoteEntry.Parent = RemoteTab
+
+    local RemoteEntryCorner = Instance.new("UICorner")
+    RemoteEntryCorner.CornerRadius = UDim.new(0, 6)
+    RemoteEntryCorner.Parent = RemoteEntry
+
+    RemoteTab.CanvasSize = UDim2.new(0, 0, 0, RemoteListLayout.AbsoluteContentSize.Y)
+end
+
+-- Функция для логирования
+local SelectedRemote = nil
+local function LogRemote(Remote, Method, Arguments, ReturnValue)
+    if not Settings.Enabled or IgnoredRemotes[Remote.Name] then return end
+    AddRemoteToTab(Remote)
+
+    local logText = string.format("[%s] %s:%s(%s)", os.date("%H:%M:%S"), Remote:GetFullName(), Method, table.concat(table.map(Arguments, ValueToString), ", "))
+    if Settings.ShowReturns and ReturnValue then
+        logText = logText .. " -> " .. ValueToString(ReturnValue)
+    end
+
+    local LogEntry = Instance.new("TextButton")
+    LogEntry.Size = UDim2.new(1, -10, 0, 30)
+    LogEntry.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    LogEntry.Text = logText
+    LogEntry.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LogEntry.TextSize = 14
+    LogEntry.Font = Enum.Font.Gotham
+    LogEntry.TextXAlignment = Enum.TextXAlignment.Left
+    LogEntry.TextStrokeTransparency = 0.7
+    LogEntry.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    LogEntry.Parent = LogFrame
+
+    local LogEntryCorner = Instance.new("UICorner")
+    LogEntryCorner.CornerRadius = UDim.new(0, 6)
+    LogEntryCorner.Parent = LogEntry
+
+    -- Сохранение данных для кнопок
+    LogEntry:SetAttribute("Remote", Remote)
+    LogEntry:SetAttribute("Method", Method)
+    LogEntry:SetAttribute("Arguments", Arguments)
+
+    -- Копирование в буфер обмена при клике
+    LogEntry.MouseButton1Click:Connect(function()
+        if Settings.CopyToClipboard then
+            setclipboard(logText)
+        end
+        SelectedRemote = { Remote = Remote, Method = Method, Arguments = Arguments }
+    end)
+
+    LogFrame.CanvasSize = UDim2.new(0, 0, 0, LogLayout.AbsoluteContentSize.Y)
+end
+
+-- Обработчики кнопок
+Buttons["Copy Code"].MouseButton1Click:Connect(function()
+    if SelectedRemote then
+        local code = string.format("%s:%s(%s)", SelectedRemote.Remote:GetFullName(), SelectedRemote.Method, table.concat(table.map(SelectedRemote.Arguments, ValueToString), ", "))
+        setclipboard(code)
+    end
+end)
+
+Buttons["Copy Remote"].MouseButton1Click:Connect(function()
+    if SelectedRemote then
+        setclipboard(SelectedRemote.Remote:GetFullName())
+    end
+end)
+
+Buttons["Run Remote"].MouseButton1Click:Connect(function()
+    if SelectedRemote then
+        if SelectedRemote.Method == "FireServer" then
+            SelectedRemote.Remote:FireServer(unpack(SelectedRemote.Arguments))
+        elseif SelectedRemote.Method == "InvokeServer" then
+            SelectedRemote.Remote:InvokeServer(unpack(SelectedRemote.Arguments))
+        end
+    end
+end)
+
+Buttons["Info Function"].MouseButton1Click:Connect(function()
+    if SelectedRemote then
+        local info = string.format("Remote: %s\nType: %s\nMethod: %s\nArguments: %s", 
+            SelectedRemote.Remote:GetFullName(), 
+            SelectedRemote.Remote.ClassName, 
+            SelectedRemote.Method, 
+            HttpService:JSONEncode(SelectedRemote.Arguments))
+        LogRemote(nil, "Info", {info}, nil)
+    end
+end)
+
+Buttons["Ignore Remote"].MouseButton1Click:Connect(function()
+    if SelectedRemote then
+        IgnoredRemotes[SelectedRemote.Remote.Name] = true
+        for _, entry in pairs(RemoteTab:GetChildren()) do
+            if entry:IsA("TextButton") and entry.Text == SelectedRemote.Remote.Name then
+                entry.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            end
+        end
+    end
+end)
+
+Buttons["Unignore Remote"].MouseButton1Click:Connect(function()
+    if SelectedRemote then
+        IgnoredRemotes[SelectedRemote.Remote.Name] = nil
+        for _, entry in pairs(RemoteTab:GetChildren()) do
+            if entry:IsA("TextButton") and entry.Text == SelectedRemote.Remote.Name then
+                entry.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+            end
+        end
+    end
+end)
+
+-- Хук для RemoteEvent
+local function HookRemoteEvent(Remote)
+    local OriginalFireServer = Remote.FireServer
+    Remote.FireServer = function(self, ...)
+        local args = {...}
+        if Settings.Enabled and not IgnoredRemotes[Remote.Name] then
+            LogRemote(Remote, "FireServer", args, nil)
+        end
+        return OriginalFireServer(self, ...)
+    end
+end
+
+-- Хук для RemoteFunction
+local function HookRemoteFunction(Remote)
+    local OriginalInvokeServer = Remote.InvokeServer
+    Remote.InvokeServer = function(self, ...)
+        local args = {...}
+        if Settings.Enabled and not IgnoredRemotes[Remote.Name] then
+            local returnValue = OriginalInvokeServer(self, ...)
+            LogRemote(Remote, "InvokeServer", args, returnValue)
+            return returnValue
+        end
+        return OriginalInvokeServer(self, ...)
+    end
+end
+
+-- Сканирование RemoteEvent и RemoteFunction
+local function ScanRemotes(container)
+    for _, obj in pairs(container:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
+            HookRemoteEvent(obj)
+            AddRemoteToTab(obj)
+        elseif obj:IsA("RemoteFunction") then
+            HookRemoteFunction(obj)
+            AddRemoteToTab(obj)
+        end
+    end
+    container.DescendantAdded:Connect(function(obj)
+        if obj:IsA("RemoteEvent") then
+            HookRemoteEvent(obj)
+            AddRemoteToTab(obj)
+        elseif obj:IsA("RemoteFunction") then
+            HookRemoteFunction(obj)
+            AddRemoteToTab(obj)
+        end
+    end)
+end
+
+-- Запускаем сканирование
+ScanRemotes(game:GetService("ReplicatedStorage"))
+ScanRemotes(game:GetService("Workspace"))
+
+-- Поддержка горячих клавиш для ПК
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.F9 then
+        ScreenGui.Enabled = not ScreenGui.Enabled
+    end
+end)
+
+-- Поддержка сенсорного управления (двойное касание для открытия/закрытия)
+local lastTapTime = 0
+UserInputService.TouchTap:Connect(function(touchPositions, gameProcessed)
+    if not gameProcessed and #touchPositions == 1 then
+        local currentTime = tick()
+        if currentTime - lastTapTime < 0.3 then
+            ScreenGui.Enabled = not ScreenGui.Enabled
+        end
+        lastTapTime = currentTime
+    end
+end)
