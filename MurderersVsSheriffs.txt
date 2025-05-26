@@ -1,0 +1,537 @@
+-- WindUI
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- Locals
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local CurrentCamera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local CoreGui = game:GetService("CoreGui")
+
+function gradient(text, startColor, endColor)
+    local result = ""
+    local length = #text
+
+    for i = 1, length do
+        local t = (i - 1) / math.max(length - 1, 1)
+        local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
+        local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
+        local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
+
+        local char = text:sub(i, i)
+        result = result .. "<font color=\"rgb(" .. r ..", " .. g .. ", " .. b .. ")\">" .. char .. "</font>"
+    end
+
+    return result
+end
+
+local Confirmed = false
+
+WindUI:Popup({
+    Title = gradient("PRIVATE SCRIPT", Color3.fromHex("#eb1010"), Color3.fromHex("#1023eb")),
+    Icon = "info",
+    Content = gradient("This script made by", Color3.fromHex("#10eb3c"), Color3.fromHex("#67c97a")) .. gradient(" SnowT", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Buttons = {
+        {
+            Title = gradient("Cancel", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+            Callback = function() end,
+            Variant = "Tertiary", -- Primary, Secondary, Tertiary
+        },
+        {
+            Title = gradient("Load", Color3.fromHex("#90f09e"), Color3.fromHex("#13ed34")),
+            Callback = function() Confirmed = true end,
+            Variant = "Secondary", -- Primary, Secondary, Tertiary
+        }
+    }
+})
+
+repeat task.wait() until Confirmed
+
+WindUI:Notify({
+    Title = gradient("SCRIPT SYSTEM", Color3.fromHex("#eb1010"), Color3.fromHex("#1023eb")),
+    Content = "Script succesful loaded",
+    Icon = "check-circle",
+    Duration = 3,
+})
+
+-- Window
+local Window = WindUI:CreateWindow({
+    Title = gradient("PRIVATE SCRIPT", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Icon = "infinity",
+    Author = gradient("MurderersVsSheriffs", Color3.fromHex("#1bf2b2"), Color3.fromHex("#1bcbf2")),
+    Folder = "WindUI",
+    Size = UDim2.fromOffset(300, 270),
+    Transparent = true,
+    Theme = "Dark",
+    SideBarWidth = 200,
+    UserEnabled = true,
+    HasOutline = true,
+})
+
+-- Open Button
+Window:EditOpenButton({
+    Title = "Open UI",
+    Icon = "monitor",
+    CornerRadius = UDim.new(2, 6),
+    StrokeThickness = 2,
+    Color = ColorSequence.new(
+        Color3.fromHex("1E213D"),
+        Color3.fromHex("1F75FE")
+    ),
+    Draggable = true,
+})
+
+-- Tabs
+local Tabs = {
+    MainTab = Window:Tab({ Title = gradient("MAIN", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "terminal" }),
+    CharacterTab = Window:Tab({ Title = gradient("CHARACTER", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "file-cog" }),
+    TeleportTab = Window:Tab({ Title = gradient("TELEPORT", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "user" }),
+    EspTab = Window:Tab({ Title = gradient("ESP", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "eye" }),
+    AimbotTab = Window:Tab({ Title = gradient("AIMBOT", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "arrow-right" }),
+    CombatTab = Window:Tab({ Title = gradient("COMBAT", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "user"}),
+    gh = Window:Divider(),
+    ServerTab = Window:Tab({ Title = gradient("SERVER", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "atom", }),
+    SettingsTab = Window:Tab({ Title = gradient("SETTINGS", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "code" }),
+    b = Window:Divider(),
+    WindowTab = Window:Tab({ Title = gradient("CONFIGURATION", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "settings", Desc = "Manage window settings and file configurations." }),
+    CreateThemeTab = Window:Tab({ Title = gradient("THEMES", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "palette", Desc = "Design and apply custom themes." }),
+}
+
+-- Character
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local CharacterSettings = {
+    WalkSpeed = {Value = 16, Default = 16, Locked = false},
+    JumpPower = {Value = 50, Default = 50, Locked = false}
+}
+
+local function updateCharacter()
+    local character = LocalPlayer.Character
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        if not CharacterSettings.WalkSpeed.Locked then
+            humanoid.WalkSpeed = CharacterSettings.WalkSpeed.Value
+        end
+        if not CharacterSettings.JumpPower.Locked then
+            humanoid.JumpPower = CharacterSettings.JumpPower.Value
+        end
+    end
+end
+Tabs.CharacterTab:Section({Title = gradient("Walkspeed", Color3.fromHex("#ff0000"), Color3.fromHex("#300000"))})
+
+Tabs.CharacterTab:Slider({
+    Title = "Walkspeed",
+    Value = {Min = 0, Max = 200, Default = 16},
+    Callback = function(value)
+        CharacterSettings.WalkSpeed.Value = value
+        updateCharacter()
+    end
+})
+
+Tabs.CharacterTab:Button({
+    Title = "Reset walkspeed",
+    Callback = function()
+        CharacterSettings.WalkSpeed.Value = CharacterSettings.WalkSpeed.Default
+        updateCharacter()
+    end
+})
+
+Tabs.CharacterTab:Toggle({
+    Title = "Block walkspeed",
+    Default = false,
+    Callback = function(state)
+        CharacterSettings.WalkSpeed.Locked = state
+        updateCharacter()
+    end
+})
+
+Tabs.CharacterTab:Section({Title = gradient("JumpPower", Color3.fromHex("#001aff"), Color3.fromHex("#020524"))})
+
+Tabs.CharacterTab:Slider({
+    Title = "Jumppower",
+    Value = {Min = 0, Max = 200, Default = 50},
+    Callback = function(value)
+        CharacterSettings.JumpPower.Value = value
+        updateCharacter()
+    end
+})
+
+
+Tabs.CharacterTab:Button({
+    Title = "Reset jumppower",
+    Callback = function()
+        CharacterSettings.JumpPower.Value = CharacterSettings.JumpPower.Default
+        updateCharacter()
+    end
+})
+
+Tabs.CharacterTab:Toggle({
+    Title = "Block jumppower",
+    Default = false,
+    Callback = function(state)
+        CharacterSettings.JumpPower.Locked = state
+        updateCharacter()
+    end
+})
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+
+-- Teleport
+Tabs.TeleportTab:Section({Title = gradient("Teleport to players", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6"))})
+
+local teleportTarget = nil
+local teleportDropdown = nil
+
+local function updateTeleportPlayers()
+    local playersList = {"Select Player"}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(playersList, player.Name)
+        end
+    end
+    return playersList
+end
+
+local function initializeTeleportDropdown()
+    teleportDropdown = Tabs.TeleportTab:Dropdown({
+        Title = "Players",
+        Values = updateTeleportPlayers(),
+        Value = "Select Player",
+        Callback = function(selected)
+            if selected ~= "Select Player" then
+                teleportTarget = Players:FindFirstChild(selected)
+            else
+                teleportTarget = nil
+            end
+        end
+    })
+end
+
+-- Вместо старого кода инициализации телепорта вызываем:
+initializeTeleportDropdown()
+
+-- Обновляем обработчики событий игроков:
+Players.PlayerAdded:Connect(function(player)
+    task.wait(1) -- Даем время на инициализацию игрока
+    if teleportDropdown then
+        teleportDropdown:Refresh(updateTeleportPlayers())
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if teleportDropdown then
+        teleportDropdown:Refresh(updateTeleportPlayers())
+    end
+end)
+
+local function teleportToPlayer()
+    if teleportTarget and teleportTarget.Character then
+        local targetRoot = teleportTarget.Character:FindFirstChild("HumanoidRootPart")
+        local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        
+        if targetRoot and localRoot then
+            localRoot.CFrame = targetRoot.CFrame
+            WindUI:Notify({
+                Title = "Teleport system",
+                Content = "Teleport to "..teleportTarget.Name,
+                Icon = "check-circle",
+                Duration = 3
+            })
+        end
+    else
+        WindUI:Notify({
+            Title = "Error",
+            Content = "Target not found",
+            Icon = "x-circle",
+            Duration = 3
+        })
+    end
+end
+
+Tabs.TeleportTab:Button({
+    Title = "Teleport to player",
+    Callback = teleportToPlayer
+})
+
+Tabs.TeleportTab:Button({
+    Title = "Update players list",
+    Callback = function()
+        teleportDropdown:Refresh(updateTeleportPlayers())
+    end
+})
+
+-- В начале секции Locals добавляем:
+local espObjects = {}
+
+-- Модифицируем функцию getPlayerTeam для более точной проверки команд
+local function getPlayerTeam(player)
+    local textChatService = game:GetService("TextChatService")
+    for _, channel in pairs(textChatService.TextChannels:GetChildren()) do
+        if channel:IsA("TextChannel") then
+            local playerName = string.match(channel.Name, "%.(.+)$")
+            if playerName and playerName == player.Name then
+                local teamName = string.match(channel.Name, "^RBXTeam(.+)%.")
+                if teamName then
+                    return {
+                        Name = teamName,
+                        TeamColor = teamName == "Lily white" and BrickColor.new("Lily white") or BrickColor.new("Quill grey")
+                    }
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Модифицируем функцию isEnemy
+local function isEnemy(player)
+    if player == LocalPlayer then return false end
+    
+    local localTeam = getPlayerTeam(LocalPlayer)
+    local playerTeam = getPlayerTeam(player)
+    
+    if not localTeam or not playerTeam then 
+        return false -- Если команда не определена, не считаем врагом
+    end
+    
+    return localTeam.Name ~= playerTeam.Name
+end
+
+-- Обновляем функцию createEsp
+local function createEsp(player)
+    if player == LocalPlayer then return end
+    
+    -- Проверяем, является ли игрок врагом
+    if not isEnemy(player) then return end
+    
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    
+    -- Создаем Highlight только для врагов
+    local highlight = Instance.new("Highlight")
+    highlight.Name = player.Name .. "_Highlight"
+    highlight.Adornee = character
+    highlight.FillColor = espSettings.Highlight.TeamColor and getPlayerTeam(player).TeamColor.Color or espSettings.Highlight.Color
+    highlight.FillTransparency = espSettings.Highlight.Transparency
+    highlight.OutlineColor = espSettings.Highlight.TeamColor and getPlayerTeam(player).TeamColor.Color or espSettings.Highlight.Color
+    highlight.OutlineTransparency = 0
+    highlight.Parent = character
+    highlight.Enabled = espSettings.Highlight.Enabled
+    
+    -- Создаем BillboardGui для имени и расстояния
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = player.Name .. "_Billboard"
+    billboard.Adornee = humanoidRootPart
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = character
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = espSettings.Names.Color
+    nameLabel.TextSize = espSettings.Names.Size
+    nameLabel.Text = player.Name
+    nameLabel.Visible = espSettings.Names.Enabled
+    nameLabel.Parent = billboard
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Name = "DistanceLabel"
+    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.TextColor3 = espSettings.Distance.Color
+    distanceLabel.TextSize = espSettings.Distance.Size
+    distanceLabel.Visible = espSettings.Distance.Enabled
+    distanceLabel.Parent = billboard
+    
+    espObjects[player] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        NameLabel = nameLabel,
+        DistanceLabel = distanceLabel,
+        Character = character
+    }
+    
+    -- Обновление расстояния
+    coroutine.wrap(function()
+        while character and character.Parent and espObjects[player] do
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - humanoidRootPart.Position).Magnitude
+                distanceLabel.Text = string.format("%.1f studs", distance)
+            end
+            task.wait(0.1)
+        end
+    end)()
+end
+
+-- Добавляем функцию для обновления ESP
+local function toggleEsp()
+    for _, player in pairs(Players:GetPlayers()) do
+        if espObjects[player] then
+            espObjects[player].Highlight.Enabled = espSettings.Highlight.Enabled and isEnemy(player)
+            espObjects[player].NameLabel.Visible = espSettings.Names.Enabled and isEnemy(player)
+            espObjects[player].DistanceLabel.Visible = espSettings.Distance.Enabled and isEnemy(player)
+            
+            if espSettings.Highlight.TeamColor then
+                local team = getPlayerTeam(player)
+                if team then
+                    espObjects[player].Highlight.FillColor = team.TeamColor.Color
+                    espObjects[player].Highlight.OutlineColor = team.TeamColor.Color
+                end
+            else
+                espObjects[player].Highlight.FillColor = espSettings.Highlight.Color
+                espObjects[player].Highlight.OutlineColor = espSettings.Highlight.Color
+            end
+        else
+            createEsp(player)
+        end
+    end
+end
+
+-- Модифицируем инициализацию ESP
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        createEsp(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function()
+            createEsp(player)
+        end)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if espObjects[player] then
+        espObjects[player].Highlight:Destroy()
+        espObjects[player].Billboard:Destroy()
+        espObjects[player] = nil
+    end
+end)
+
+
+-- Highlight Section
+Tabs.EspTab:Section({
+    Title = gradient("Highlight Settings", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9"))
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Enable Highlight", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Default = false,
+    Callback = function(state)
+        espSettings.Highlight.Enabled = state
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Use Team Colors", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Default = true,
+    Callback = function(state)
+        espSettings.Highlight.TeamColor = state
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Slider({
+    Title = gradient("Highlight Transparency", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Step = 0.1,
+    Value = {Min = 0, Max = 1, Default = 0.5},
+    Callback = function(value)
+        espSettings.Highlight.Transparency = value
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Colorpicker({
+    Title = gradient("Highlight Color", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Default = Color3.fromRGB(255, 0, 0),
+    Transparency = 0,
+    Callback = function(color)
+        espSettings.Highlight.Color = color
+        toggleEsp()
+    end
+})
+
+-- Names Section
+Tabs.EspTab:Section({
+    Title = gradient("Name ESP Settings", Color3.fromHex("#e80909"), Color3.fromHex("#630404"))
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Enable Names", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Default = false,
+    Callback = function(state)
+        espSettings.Names.Enabled = state
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Slider({
+    Title = gradient("Name Size", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Value = {Min = 5, Max = 25, Default = 15},
+    Callback = function(value)
+        espSettings.Names.Size = value
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Colorpicker({
+    Title = gradient("Name Color", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Default = Color3.fromRGB(255, 0, 0),
+    Transparency = 0,
+    Callback = function(color)
+        espSettings.Names.Color = color
+        toggleEsp()
+    end
+})
+
+-- Distance Section
+Tabs.EspTab:Section({
+    Title = gradient("Distance ESP Settings", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c"))
+})
+
+Tabs.EspTab:Toggle({
+    Title = gradient("Enable Distance", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Default = false,
+    Callback = function(state)
+        espSettings.Distance.Enabled = state
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Slider({
+    Title = gradient("Distance Size", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Value = {Min = 5, Max = 25, Default = 15},
+    Callback = function(value)
+        espSettings.Distance.Size = value
+        toggleEsp()
+    end
+})
+
+Tabs.EspTab:Colorpicker({
+    Title = gradient("Distance Color", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Default = Color3.fromRGB(255, 0, 0),
+    Transparency = 0,
+    Callback = function(color)
+        espSettings.Distance.Color = color
+        toggleEsp()
+    end
+})
