@@ -1,0 +1,253 @@
+-- Услуги Roblox
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- WindUI
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- Функция для градиента
+function gradient(text, startColor, endColor)
+    local result = ""
+    local length = #text
+    for i = 1, length do
+        local t = (i - 1) / math.max(length - 1, 1)
+        local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
+        local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
+        local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
+        local char = text:sub(i, i)
+        result = result .. "<font color=\"rgb(" .. r ..", " .. g .. ", " .. b .. ")\">" .. char .. "</font>"
+    end
+    return result
+end
+
+-- Окно WindUI
+local Window = WindUI:CreateWindow({
+    Title = gradient("ESP Settings", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9")),
+    Icon = "eye",
+    Folder = "WindUI",
+    Size = UDim2.fromOffset(300, 270),
+    Transparent = true,
+    Theme = "Dark",
+    SideBarWidth = 200,
+    UserEnabled = true,
+    HasOutline = true,
+})
+
+-- Вкладка ESP
+local EspTab = Window:Tab({ Title = gradient("ESP", Color3.fromHex("#ffffff"), Color3.fromHex("#636363")), Icon = "eye" })
+
+-- Настройки ESP
+local espSettings = {
+    MaxDistance = 250, -- Ограничение до 250 студов
+    HighlightEnabled = false,
+    NamesEnabled = false,
+    DistanceEnabled = false,
+    HighlightColor = Color3.fromRGB(255, 0, 0),
+    TextColor = Color3.fromRGB(255, 255, 255),
+}
+
+-- Хранилище ESP
+local espElements = {}
+
+-- Проверка, жив ли игрок
+local function isPlayerAlive(player)
+    local character = player.Character
+    if not character then return false end
+    local humanoid = character:FindFirstChild("Humanoid")
+    return humanoid and humanoid.Health > 0
+end
+
+-- Расчет расстояния до игрока
+local function getPlayerDistance(player)
+    if not player.Character or not LocalPlayer.Character then return math.huge end
+    local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+    local localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetRoot or not localRoot then return math.huge end
+    return (targetRoot.Position - localRoot.Position).Magnitude
+end
+
+-- Создание или обновление ESP
+local function createEsp(player)
+    if player == LocalPlayer or not isPlayerAlive(player) then
+        if espElements[player] then
+            espElements[player].Highlight:Destroy()
+            if espElements[player].Billboard then
+                espElements[player].Billboard:Destroy()
+            end
+            espElements[player] = nil
+        end
+        return
+    end
+
+    local distance = getPlayerDistance(player)
+    if distance > espSettings.MaxDistance then
+        if espElements[player] then
+            espElements[player].Highlight:Destroy()
+            if espElements[player].Billboard then
+                espElements[player].Billboard:Destroy()
+            end
+            espElements[player] = nil
+        end
+        return
+    end
+
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+    -- Если ESP еще не создан, создаем его
+    if not espElements[player] then
+        espElements[player] = {}
+
+        -- Подсветка
+        if espSettings.HighlightEnabled then
+            local highlight = Instance.new("Highlight")
+            highlight.Adornee = character
+            highlight.FillColor = espSettings.HighlightColor
+            highlight.FillTransparency = 0.5
+            highlight.OutlineColor = espSettings.HighlightColor
+            highlight.OutlineTransparency = 0
+            highlight.Parent = CoreGui
+            espElements[player].Highlight = highlight
+        end
+
+        -- Billboard для имени и дистанции
+        if espSettings.NamesEnabled or espSettings.DistanceEnabled then
+            local billboard = Instance.new("BillboardGui")
+            billboard.Adornee = character:FindFirstChild("HumanoidRootPart")
+            billboard.Size = UDim2.new(0, 200, 0, 50)
+            billboard.StudsOffset = Vector3.new(0, 3, 0)
+            billboard.AlwaysOnTop = true
+            billboard.Parent = CoreGui
+            espElements[player].Billboard = billboard
+
+            -- Имя
+            if espSettings.NamesEnabled then
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 0, 25)
+                nameLabel.Position = UDim2.new(0, 0, 0, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = player.Name
+                nameLabel.TextColor3 = espSettings.TextColor
+                nameLabel.TextSize = 15
+                nameLabel.Font = Enum.Font.SourceSansBold
+                nameLabel.TextStrokeTransparency = 0.5
+                nameLabel.Parent = billboard
+            end
+
+            -- Дистанция
+            if espSettings.DistanceEnabled then
+                local offset = espSettings.NamesEnabled and 25 or 0
+                local distanceLabel = Instance.new("TextLabel")
+                distanceLabel.Size = UDim2.new(1, 0, 0, 25)
+                distanceLabel.Position = UDim2.new(0, 0, 0, offset)
+                distanceLabel.BackgroundTransparency = 1
+                distanceLabel.Text = ""
+                distanceLabel.TextColor3 = espSettings.TextColor
+                distanceLabel.TextSize = 15
+                distanceLabel.Font = Enum.Font.SourceSansBold
+                distanceLabel.TextStrokeTransparency = 0.5
+                distanceLabel.Parent = billboard
+                espElements[player].DistanceLabel = distanceLabel
+            end
+        end
+    end
+
+    -- Обновляем текст дистанции
+    if espElements[player] and espElements[player].DistanceLabel then
+        espElements[player].DistanceLabel.Text = math.floor(distance) .. " studs"
+    end
+end
+
+-- Постоянное обновление ESP
+RunService.RenderStepped:Connect(function()
+    for _, player in pairs(Players:GetPlayers()) do
+        createEsp(player)
+    end
+end)
+
+-- Очистка ESP при уходе игрока
+Players.PlayerRemoving:Connect(function(player)
+    if espElements[player] then
+        espElements[player].Highlight:Destroy()
+        if espElements[player].Billboard then
+            espElements[player].Billboard:Destroy()
+        end
+        espElements[player] = nil
+    end
+end)
+
+-- Элементы интерфейса для настройки ESP
+EspTab:Section({Title = gradient("ESP Controls", Color3.fromHex("#001e80"), Color3.fromHex("#16f2d9"))})
+
+-- Переключатель для подсветки
+EspTab:Toggle({
+    Title = gradient("Enable Highlight", Color3.fromHex("#ffffff"), Color3.fromHex("#001e63")),
+    Default = false,
+    Callback = function(state)
+        espSettings.HighlightEnabled = state
+    end
+})
+
+-- Выбор цвета для подсветки
+EspTab:Colorpicker({
+    Title = gradient("Highlight Color", Color3.fromHex("#001e80"), Color3.fromHex("#ffffff")),
+    Default = Color3.fromRGB(255, 0, 0),
+    Transparency = 0,
+    Callback = function(color)
+        espSettings.HighlightColor = color
+        for player, esp in pairs(espElements) do
+            if esp.Highlight then
+                esp.Highlight.FillColor = color
+                esp.Highlight.OutlineColor = color
+            end
+        end
+    end
+})
+
+-- Переключатель для имен
+EspTab:Toggle({
+    Title = gradient("Show Names", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Default = false,
+    Callback = function(state)
+        espSettings.NamesEnabled = state
+    end
+})
+
+-- Переключатель для дистанции
+EspTab:Toggle({
+    Title = gradient("Show Distance", Color3.fromHex("#0ff707"), Color3.fromHex("#1e690c")),
+    Default = false,
+    Callback = function(state)
+        espSettings.DistanceEnabled = state
+    end
+})
+
+-- Выбор цвета для текста (имя и дистанция)
+EspTab:Colorpicker({
+    Title = gradient("Text Color", Color3.fromHex("#e80909"), Color3.fromHex("#630404")),
+    Default = Color3.fromRGB(255, 255, 255),
+    Transparency = 0,
+    Callback = function(color)
+        espSettings.TextColor = color
+        for player, esp in pairs(espElements) do
+            if esp.Billboard then
+                for _, label in pairs(esp.Billboard:GetChildren()) do
+                    if label:IsA("TextLabel") then
+                        label.TextColor3 = color
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- Слайдер для настройки максимальной дистанции
+EspTab:Slider({
+    Title = gradient("Max Distance", Color3.fromHex("#001e80"), Color3.fromHex("#ffffff")),
+    Value = {Min = 100, Max = 1000, Default = 250},
+    Callback = function(value)
+        espSettings.MaxDistance = value
+    end
+})
