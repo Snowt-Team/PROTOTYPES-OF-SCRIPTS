@@ -724,7 +724,7 @@ Tabs.AutofarmTab:Section({
     Title = gradient("Auto-Walk", Color3.fromHex("#00448c"), Color3.fromHex("#0affd6"))
 })
 
-Tabs.AutofarmTab:Label({
+Tabs.AutofarmTab:Section({
     Title = "Walk Status: " .. AutoWalkStatus
 })
 
