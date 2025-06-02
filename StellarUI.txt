@@ -1,0 +1,1111 @@
+```lua
+-- StellarUI: A Modern Roblox UI Library
+-- Version: 1.0.0
+-- Author: Inspired by Luna Interface Suite, enhanced by xAI
+-- License: MIT
+
+local StellarUI = {
+    Version = "1.0.0",
+    Modules = {},
+    Themes = {},
+    Config = {},
+    Animations = {},
+    Elements = {},
+    Notifications = {},
+}
+
+-- Services
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+
+local isStudio = RunService:IsStudio()
+
+-- Utility Functions
+local function Kwargify(defaults, settings)
+    local newSettings = {}
+    for k, v in pairs(defaults) do
+        newSettings[k] = settings[k] or v
+    end
+    return newSettings
+end
+
+-- Centralized Animation Manager
+local AnimationManager = {
+    ActiveTweens = {},
+    Create = function(instance, properties, tweenInfo)
+        tweenInfo = tweenInfo or TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(instance, tweenInfo, properties)
+        table.insert(AnimationManager.ActiveTweens, tween)
+        tween:Play()
+        tween.Completed:Connect(function()
+            table.remove(AnimationManager.ActiveTweens, table.find(AnimationManager.ActiveTweens, tween))
+        end)
+        return tween
+    end,
+    CancelAll = function()
+        for _, tween in ipairs(AnimationManager.ActiveTweens) do
+            tween:Cancel()
+        end
+        AnimationManager.ActiveTweens = {}
+    end
+}
+
+-- Theme Manager
+local ThemeManager = {
+    CurrentTheme = "Dark",
+    Themes = {
+        Dark = {
+            Background = Color3.fromRGB(30, 30, 30),
+            SecondaryBackground = Color3.fromRGB(40, 40, 40),
+            Accent = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 150, 200)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 180, 180)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 100, 200))
+            },
+            Text = Color3.fromRGB(220, 220, 220),
+            TextSecondary = Color3.fromRGB(150, 150, 150),
+            Border = Color3.fromRGB(60, 60, 60)
+        },
+        Light = {
+            Background = Color3.fromRGB(240, 240, 240),
+            SecondaryBackground = Color3.fromRGB(200, 200, 200),
+            Accent = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 120, 180)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 140, 140)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 80, 180))
+            },
+            Text = Color3.fromRGB(40, 40, 40),
+            TextSecondary = Color3.fromRGB(100, 100, 100),
+            Border = Color3.fromRGB(180, 180, 180)
+        }
+    },
+    ApplyTheme = function(themeName)
+        ThemeManager.CurrentTheme = themeName or ThemeManager.CurrentTheme
+        local theme = ThemeManager.Themes[ThemeManager.CurrentTheme]
+        for _, element in pairs(StellarUI.Elements) do
+            if element.UpdateTheme then
+                element:UpdateTheme(theme)
+            end
+        end
+    end
+}
+
+-- Notification Manager with Object Pooling
+local NotificationManager = {
+    Pool = {},
+    Active = {},
+    Create = function(settings)
+        settings = Kwargify({
+            Title = "Notification",
+            Content = "",
+            Icon = "info",
+            ImageSource = "Material",
+            Duration = 5
+        }, settings or {})
+
+        local notification = table.remove(NotificationManager.Pool) or Instance.new("Frame")
+        notification.Size = UDim2.new(0, 300, 0, 100)
+        notification.Position = UDim2.new(1, 0, 1, -110)
+        notification.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].SecondaryBackground
+        notification.BackgroundTransparency = 0.1
+        notification.Parent = CoreGui
+        notification.ClipsDescendants = true
+
+        local gradient = Instance.new("UIGradient", notification)
+        gradient.Color = ThemeManager.Themes[ThemeManager.CurrentTheme].Accent
+
+        local title = Instance.new("TextLabel", notification)
+        title.Size = UDim2.new(1, -40, 0, 20)
+        title.Position = UDim2.new(0, 20, 0, 10)
+        title.Text = settings.Title
+        title.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+        title.TextSize = 14
+        title.Font = Enum.Font.SourceSansBold
+        title.TextXAlignment = Enum.TextXAlignment.Left
+
+        local content = Instance.new("TextLabel", notification)
+        content.Size = UDim2.new(1, -40, 0, 60)
+        content.Position = UDim2.new(0, 20, 0, 30)
+        content.Text = settings.Content
+        content.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].TextSecondary
+        content.TextSize = 12
+        content.Font = Enum.Font.SourceSans
+        content.TextWrapped = true
+        content.TextXAlignment = Enum.TextXAlignment.Left
+
+        local stroke = Instance.new("UIStroke", notification)
+        stroke.Color = ThemeManager.Themes[ThemeManager.CurrentTheme].Border
+        stroke.Thickness = 1
+
+        AnimationManager.Create(notification, {Position = UDim2.new(1, -310, 1, -110)})
+        task.delay(settings.Duration, function()
+            AnimationManager.Create(notification, {Position = UDim2.new(1, 0, 1, -110)})
+            task.wait(0.5)
+            notification.Parent = nil
+            table.insert(NotificationManager.Pool, notification)
+        end)
+
+        function notification:UpdateTheme(theme)
+            notification.BackgroundColor3 = theme.SecondaryBackground
+            gradient.Color = theme.Accent
+            title.TextColor3 = theme.Text
+            content.TextColor3 = theme.TextSecondary
+            stroke.Color = theme.Border
+        end
+
+        table.insert(StellarUI.Elements, notification)
+        return notification
+    end
+}
+
+-- Window Creation
+function StellarUI:CreateWindow(settings)
+    settings = Kwargify({
+        Name = "StellarUI",
+        Subtitle = "",
+        LogoID = nil,
+        Bind = Enum.KeyCode.F9,
+        LoadingEnabled = false,
+        LoadingTitle = "Loading...",
+        LoadingSubtitle = "",
+        KeySystem = false,
+        KeySettings = {
+            Title = "Key System",
+            Subtitle = "",
+            Note = "Enter your key",
+            FileName = "Key",
+            SaveKey = true,
+            Key = {"ExampleKey"},
+            SecondAction = {Enabled = false, Type = "Link", Parameter = ""}
+        }
+    }, settings or {})
+
+    local Window = {
+        Name = settings.Name,
+        Subtitle = settings.Subtitle,
+        Bind = settings.Bind,
+        State = false,
+        Tabs = {},
+        UI = Instance.new("ScreenGui", CoreGui),
+    }
+
+    Window.UI.Name = HttpService:GenerateGUID(false)
+    Window.UI.ResetOnSpawn = false
+
+    local Main = Instance.new("Frame", Window.UI)
+    Main.Size = UDim2.new(0, 600, 0, 400)
+    Main.Position = UDim2.new(0.5, -300, 0.5, -200)
+    Main.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Background
+    Main.BackgroundTransparency = 0.1
+    Main.ClipsDescendants = true
+
+    local gradient = Instance.new("UIGradient", Main)
+    gradient.Color = ThemeManager.Themes[ThemeManager.CurrentTheme].Accent
+
+    local Navigation = Instance.new("Frame", Main)
+    Navigation.Size = UDim2.new(0, 200, 1, 0)
+    Navigation.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].SecondaryBackground
+    Navigation.BackgroundTransparency = 0.2
+
+    local NavLayout = Instance.new("UIListLayout", Navigation)
+    NavLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    NavLayout.Padding = UDim.new(0, 5)
+
+    local TabContainer = Instance.new("ScrollingFrame", Main)
+    TabContainer.Size = UDim2.new(1, -200, 1, 0)
+    TabContainer.Position = UDim2.new(0, 200, 0, 0)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    TabContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    TabContainer.ScrollBarThickness = 4
+
+    local DragBar = Instance.new("Frame", Main)
+    DragBar.Size = UDim2.new(1, 0, 0, 30)
+    DragBar.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].SecondaryBackground
+    DragBar.BackgroundTransparency = 0.2
+
+    local Title = Instance.new("TextLabel", DragBar)
+    Title.Size = UDim2.new(1, -40, 1, 0)
+    Title.Position = UDim2.new(0, 20, 0, 0)
+    Title.Text = settings.Name .. " | " .. settings.Subtitle
+    Title.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+    Title.TextSize = 14
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Dragging Logic
+    local dragging, dragInput, dragStart, startPos
+    DragBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    DragBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    -- Keybind to toggle UI
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.KeyCode == Window.Bind then
+            Window.State = not Window.State
+            Main.Visible = Window.State
+            AnimationManager.Create(Main, {BackgroundTransparency = Window.State and 0.1 or 1})
+        end
+    end)
+
+    -- Tab Creation
+    function Window:CreateTab(tabSettings)
+        tabSettings = Kwargify({
+            Name = "Tab",
+            Icon = "home",
+            ImageSource = "Material",
+            ShowTitle = true
+        }, tabSettings or {})
+
+        local Tab = {
+            Name = tabSettings.Name,
+            Icon = tabSettings.Icon,
+            Elements = {},
+            Page = Instance.new("Frame", TabContainer),
+            Button = Instance.new("TextButton", Navigation),
+        }
+
+        Tab.Page.Size = UDim2.new(1, 0, 0, 0)
+        Tab.Page.BackgroundTransparency = 1
+        Tab.Page.Visible = false
+        Tab.Page.AutomaticSize = Enum.AutomaticSize.Y
+
+        local Layout = Instance.new("UIListLayout", Tab.Page)
+        Layout.SortOrder = Enum.SortOrder.LayoutOrder
+        Layout.Padding = UDim.new(0, 10)
+
+        Tab.Button.Size = UDim2.new(1, -10, 0, 40)
+        Tab.Button.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Background
+        Tab.Button.Text = tabSettings.ShowTitle and tabSettings.Name or ""
+        Tab.Button.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+        Tab.Button.TextSize = 14
+        Tab.Button.Font = Enum.Font.SourceSans
+
+        local Icon = Instance.new("ImageLabel", Tab.Button)
+        Icon.Size = UDim2.new(0, 20, 0, 20)
+        Icon.Position = UDim2.new(0, 10, 0.5, -10)
+        Icon.BackgroundTransparency = 1
+        Icon.Image = tabSettings.ImageSource == "Material" and StellarUI.MaterialIcons[tabSettings.Icon] or tabSettings.Icon
+
+        Tab.Button.MouseButton1Click:Connect(function()
+            for _, otherTab in pairs(Window.Tabs) do
+                otherTab.Page.Visible = false
+                AnimationManager.Create(otherTab.Button, {BackgroundTransparency = 0.2})
+            end
+            Tab.Page.Visible = true
+            AnimationManager.Create(Tab.Button, {BackgroundTransparency = 0})
+        end)
+
+        function Tab:UpdateTheme(theme)
+            Tab.Button.BackgroundColor3 = theme.Background
+            Tab.Button.TextColor3 = theme.Text
+        end
+
+        -- Element Creation: Button
+        function Tab:CreateButton(buttonSettings)
+            buttonSettings = Kwargify({
+                Name = "Button",
+                Description = "",
+                Callback = function() end
+            }, buttonSettings or {})
+
+            local Button = {
+                Name = buttonSettings.Name,
+                Callback = buttonSettings.Callback,
+                Instance = Instance.new("TextButton", Tab.Page),
+            }
+
+            Button.Instance.Size = UDim2.new(1, -20, 0, buttonSettings.Description ~= "" and 60 or 40)
+            Button.Instance.Position = UDim2.new(0, 10, 0, 0)
+            Button.Instance.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].SecondaryBackground
+            Button.Instance.Text = buttonSettings.Name
+            Button.Instance.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+            Button.Instance.TextSize = 14
+            Button.Instance.Font = Enum.Font.SourceSans
+
+            local stroke = Instance.new("UIStroke", Button.Instance)
+            stroke.Color = ThemeManager.Themes[ThemeManager.CurrentTheme].Border
+            stroke.Thickness = 1
+
+            if buttonSettings.Description ~= "" then
+                local desc = Instance.new("TextLabel", Button.Instance)
+                desc.Size = UDim2.new(1, -10, 0, 20)
+                desc.Position = UDim2.new(0, 5, 0, 30)
+                desc.Text = buttonSettings.Description
+                desc.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].TextSecondary
+                desc.TextSize = 12
+                desc.Font = Enum.Font.SourceSans
+                desc.TextWrapped = true
+                desc.TextXAlignment = Enum.TextXAlignment.Left
+                desc.BackgroundTransparency = 1
+            end
+
+            Button.Instance.MouseButton1Click:Connect(function()
+                local success, err = pcall(Button.Callback)
+                if not success then
+                    NotificationManager.Create({
+                        Title = "Error",
+                        Content = "Callback failed: " .. tostring(err),
+                        Duration = 5
+                    })
+                end
+            end)
+
+            function Button:UpdateTheme(theme)
+                Button.Instance.BackgroundColor3 = theme.SecondaryBackground
+                Button.Instance.TextColor3 = theme.Text
+                stroke.Color = theme.Border
+                if Button.Instance:FindFirstChild("TextLabel") then
+                    Button.Instance.TextLabel.TextColor3 = theme.TextSecondary
+                end
+            end
+
+            StellarUI.Elements[Button.Instance] = Button
+            return Button
+        end
+
+        -- Element Creation: Toggle
+        function Tab:CreateToggle(toggleSettings, flag)
+            toggleSettings = Kwargify({
+                Name = "Toggle",
+                Description = "",
+                CurrentValue = false,
+                Callback = function() end
+            }, toggleSettings or {})
+
+            local Toggle = {
+                Name = toggleSettings.Name,
+                CurrentValue = toggleSettings.CurrentValue,
+                Callback = toggleSettings.Callback,
+                Instance = Instance.new("Frame", Tab.Page),
+                Flag = flag
+            }
+
+            Toggle.Instance.Size = UDim2.new(1, -20, 0, toggleSettings.Description ~= "" and 60 or 40)
+            Toggle.Instance.Position = UDim2.new(0, 10, 0, 0)
+            Toggle.Instance.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].SecondaryBackground
+
+            local label = Instance.new("TextLabel", Toggle.Instance)
+            label.Size = UDim2.new(1, -60, 0, 20)
+            label.Position = UDim2.new(0, 10, 0, 10)
+            label.Text = toggleSettings.Name
+            label.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+            label.TextSize = 14
+            label.Font = Enum.Font.SourceSans
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.BackgroundTransparency = 1
+
+            local checkBox = Instance.new("TextButton", Toggle.Instance)
+            checkBox.Size = UDim2.new(0, 20, 0, 20)
+            checkBox.Position = UDim2.new(1, -30, 0, 10)
+            checkBox.BackgroundColor3 = Toggle.CurrentValue and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(200, 100, 100)
+            checkBox.Text = ""
+
+            local stroke = Instance.new("UIStroke", Toggle.Instance)
+            stroke.Color = ThemeManager.Themes[ThemeManager.CurrentTheme].Border
+            stroke.Thickness = 1
+
+            if toggleSettings.Description ~= "" then
+                local desc = Instance.new("TextLabel", Toggle.Instance)
+                desc.Size = UDim2.new(1, -10, 0, 20)
+                desc.Position = UDim2.new(0, 5, 0, 30)
+                desc.Text = toggleSettings.Description
+                desc.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].TextSecondary
+                desc.TextSize = 12
+                desc.Font = Enum.Font.SourceSans
+                desc.TextWrapped = true
+                desc.TextXAlignment = Enum.TextXAlignment.Left
+                desc.BackgroundTransparency = 1
+            end
+
+            checkBox.MouseButton1Click:Connect(function()
+                Toggle.CurrentValue = not Toggle.CurrentValue
+                AnimationManager.Create(checkBox, {BackgroundColor3 = Toggle.CurrentValue and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(200, 100, 100)})
+                local success, err = pcall(Toggle.Callback, Toggle.CurrentValue)
+                if not success then
+                    NotificationManager.Create({
+                        Title = "Error",
+                        Content = "Callback failed: " .. tostring(err),
+                        Duration = 5
+                    })
+                end
+            end)
+
+            function Toggle:Set(newSettings)
+                newSettings = Kwargify(toggleSettings, newSettings or {})
+                Toggle.Name = newSettings.Name
+                Toggle.CurrentValue = newSettings.CurrentValue
+                Toggle.Callback = newSettings.Callback
+                label.Text = newSettings.Name
+                checkBox.BackgroundColor3 = Toggle.CurrentValue and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(200, 100, 100)
+            end
+
+            function Toggle:Destroy()
+                Toggle.Instance:Destroy()
+                StellarUI.Elements[Toggle.Instance] = nil
+            end
+
+            function Toggle:UpdateTheme(theme)
+                Toggle.Instance.BackgroundColor3 = theme.SecondaryBackground
+                label.TextColor3 = theme.Text
+                stroke.Color = theme.Border
+                if Toggle.Instance:FindFirstChild("TextLabel") then
+                    Toggle.Instance.TextLabel.TextColor3 = theme.TextSecondary
+                end
+            end
+
+            if flag then
+                StellarUI.Options[flag] = Toggle
+            end
+            StellarUI.Elements[Toggle.Instance] = Toggle
+            return Toggle
+        end
+
+        -- Element Creation: Slider
+        function Tab:CreateSlider(sliderSettings, flag)
+            sliderSettings = Kwargify({
+                Name = "Slider",
+                Range = {0, 100},
+                Increment = 1,
+                CurrentValue = 50,
+                Callback = function() end
+            }, sliderSettings or {})
+
+            local Slider = {
+                Name = sliderSettings.Name,
+                CurrentValue = sliderSettings.CurrentValue,
+                Callback = sliderSettings.Callback,
+                Instance = Instance.new("Frame", Tab.Page),
+                Flag = flag
+            }
+
+            Slider.Instance.Size = UDim2.new(1, -20, 0, 50)
+            Slider.Instance.Position = UDim2.new(0, 10, 0, 0)
+            Slider.Instance.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].SecondaryBackground
+
+            local label = Instance.new("TextLabel", Slider.Instance)
+            label.Size = UDim2.new(1, -60, 0, 20)
+            label.Position = UDim2.new(0, 10, 0, 5)
+            label.Text = sliderSettings.Name .. ": " .. sliderSettings.CurrentValue
+            label.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+            label.TextSize = 14
+            label.Font = Enum.Font.SourceSans
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.BackgroundTransparency = 1
+
+            local sliderBar = Instance.new("Frame", Slider.Instance)
+            sliderBar.Size = UDim2.new(1, -20, 0, 10)
+            sliderBar.Position = UDim2.new(0, 10, 0, 30)
+            sliderBar.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Border
+
+            local fill = Instance.new("Frame", sliderBar)
+            fill.Size = UDim2.new((sliderSettings.CurrentValue - sliderSettings.Range[1]) / (sliderSettings.Range[2] - sliderSettings.Range[1]), 0, 1, 0)
+            fill.BackgroundColor3 = Color3.fromRGB(100, 150, 200)
+            local gradient = Instance.new("UIGradient", fill)
+            gradient.Color = ThemeManager.Themes[ThemeManager.CurrentTheme].Accent
+
+            local handle = Instance.new("Frame", sliderBar)
+            handle.Size = UDim2.new(0, 14, 0, 14)
+            handle.Position = UDim2.new(fill.Size.X.Scale, -7, 0, -2)
+            handle.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+            handle.BorderSizePixel = 0
+
+            local stroke = Instance.new("UIStroke", Slider.Instance)
+            stroke.Color = ThemeManager.Themes[ThemeManager.CurrentTheme].Border
+            stroke.Thickness = 1
+
+            local dragging = false
+            sliderBar.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                end
+            end)
+            sliderBar.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = false
+                end
+            end)
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                    local relativeX = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+                    local value = sliderSettings.Range[1] + (relativeX * (sliderSettings.Range[2] - sliderSettings.Range[1]))
+                    value = math.floor(value / sliderSettings.Increment + 0.5) * sliderSettings.Increment
+                    Slider.CurrentValue = math.clamp(value, sliderSettings.Range[1], sliderSettings.Range[2])
+                    fill.Size = UDim2.new((Slider.CurrentValue - sliderSettings.Range[1]) / (sliderSettings.Range[2] - sliderSettings.Range[1]), 0, 1, 0)
+                    handle.Position = UDim2.new(fill.Size.X.Scale, -7, 0, -2)
+                    label.Text = sliderSettings.Name .. ": " .. Slider.CurrentValue
+                    local success, err = pcall(Slider.Callback, Slider.CurrentValue)
+                    if not success then
+                        NotificationManager.Create({
+                            Title = "Error",
+                            Content = "Callback failed: " .. tostring(err),
+                            Duration = 5
+                        })
+                    end
+                end
+            end)
+
+            function Slider:Set(newSettings)
+                newSettings = Kwargify(sliderSettings, newSettings or {})
+                Slider.Name = newSettings.Name
+                Slider.CurrentValue = newSettings.CurrentValue
+                Slider.Callback = newSettings.Callback
+                label.Text = newSettings.Name .. ": " .. Slider.CurrentValue
+                fill.Size = UDim2.new((Slider.CurrentValue - newSettings.Range[1]) / (newSettings.Range[2] - newSettings.Range[1]), 0, 1, 0)
+                handle.Position = UDim2.new(fill.Size.X.Scale, -7, 0, -2)
+            end
+
+            function Slider:Destroy()
+                Slider.Instance:Destroy()
+                StellarUI.Elements[Slider.Instance] = nil
+            end
+
+            function Slider:UpdateTheme(theme)
+                Slider.Instance.BackgroundColor3 = theme.SecondaryBackground
+                label.TextColor3 = theme.Text
+                sliderBar.BackgroundColor3 = theme.Border
+                fill.BackgroundColor3 = theme.Background
+                gradient.Color = theme.Accent
+                handle.BackgroundColor3 = theme.Text
+                stroke.Color = theme.Border
+            end
+
+            if flag then
+                StellarUI.Options[flag] = Slider
+            end
+            StellarUI.Elements[Slider.Instance] = Slider
+            return Slider
+        end
+
+        -- Element Creation: ColorPicker
+        function Tab:CreateColorPicker(colorPickerSettings, flag)
+            colorPickerSettings = Kwargify({
+                Name = "Color Picker",
+                Color = Color3.fromRGB(255, 255, 255),
+                Callback = function() end
+            }, colorPickerSettings or {})
+
+            local ColorPicker = {
+                Name = colorPickerSettings.Name,
+                Color = colorPickerSettings.Color,
+                Callback = colorPickerSettings.Callback,
+                Instance = Instance.new("Frame", Tab.Page),
+                Flag = flag,
+                Open = false
+            }
+
+            ColorPicker.Instance.Size = UDim2.new(1, -20, 0, 40)
+            ColorPicker.Instance.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].SecondaryBackground
+
+            local label = Instance.new("TextLabel", ColorPicker.Instance)
+            label.Size = UDim2.new(1, -60, 0, 20)
+            label.Position = UDim2.new(0, 10, 0, 10)
+            label.Text = colorPickerSettings.Name
+            label.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+            label.TextSize = 14
+            label.Font = Enum.Font.SourceSans
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.BackgroundTransparency = 1
+
+            local preview = Instance.new("Frame", ColorPicker.Instance)
+            preview.Size = UDim2.new(0, 20, 0, 20)
+            preview.Position = UDim2.new(1, -30, 0, 10)
+            preview.BackgroundColor3 = colorPickerSettings.Color
+
+            local pickerFrame = Instance.new("Frame", ColorPicker.Instance)
+            pickerFrame.Size = UDim2.new(1, 0, 0, 0)
+            pickerFrame.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].SecondaryBackground
+            pickerFrame.Visible = false
+            pickerFrame.ClipsDescendants = true
+
+            local hsvCanvas = Instance.new("ImageLabel", pickerFrame)
+            hsvCanvas.Size = UDim2.new(0, 150, 0, 100)
+            hsvCanvas.Position = UDim2.new(0, 10, 0, 10)
+            hsvCanvas.Image = "http://www.roblox.com/asset/?id=11415645739"
+            hsvCanvas.BackgroundTransparency = 1
+
+            local hsvPoint = Instance.new("Frame", hsvCanvas)
+            hsvPoint.Size = UDim2.new(0, 8, 0, 8)
+            hsvPoint.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            hsvPoint.BorderSizePixel = 0
+
+            local hueSlider = Instance.new("Frame", pickerFrame)
+            hueSlider.Size = UDim2.new(0, 20, 0, 100)
+            hueSlider.Position = UDim2.new(0, 170, 0, 10)
+            hueSlider.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Border
+
+            local hueFill = Instance.new("Frame", hueSlider)
+            hueFill.Size = UDim2.new(1, 0, 0, 0)
+            hueFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+            local hueGradient = Instance.new("UIGradient", hueFill)
+            hueGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+                ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+                ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+                ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+            }
+
+            local hueHandle = Instance.new("Frame", hueSlider)
+            hueHandle.Size = UDim2.new(1, 0, 0, 4)
+            hueHandle.BackgroundColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+
+            local stroke = Instance.new("UIStroke", ColorPicker.Instance)
+            stroke.Color = ThemeManager.Themes[ThemeManager.CurrentTheme].Border
+            stroke.Thickness = 1
+
+            local h, s, v = colorPickerSettings.Color:ToHSV()
+            hsvPoint.Position = UDim2.new(s, -4, 1 - v, -4)
+            hueHandle.Position = UDim2.new(0, 0, h, -2)
+
+            local function updateColor()
+                local color = Color3.fromHSV(h, s, v)
+                ColorPicker.Color = color
+                preview.BackgroundColor3 = color
+                hsvCanvas.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+                hsvPoint.BackgroundColor3 = color
+                local success, err = pcall(ColorPicker.Callback, color)
+                if not success then
+                    NotificationManager.Create({
+                        Title = "Error",
+                        Content = "Callback failed: " .. tostring(err),
+                        Duration = 5
+                    })
+                end
+            end
+
+            local hsvDragging, hueDragging = false, false
+            hsvCanvas.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    hsvDragging = true
+                end
+            end)
+            hueSlider.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    hueDragging = true
+                end
+            end)
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    hsvDragging = false
+                    hueDragging = false
+                end
+            end)
+            UserInputService.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                    if hsvDragging then
+                        local relativeX = math.clamp((input.Position.X - hsvCanvas.AbsolutePosition.X) / hsvCanvas.AbsoluteSize.X, 0, 1)
+                        local relativeY = math.clamp((input.Position.Y - hsvCanvas.AbsolutePosition.Y) / hsvCanvas.AbsoluteSize.Y, 0, 1)
+                        s = relativeX
+                        v = 1 - relativeY
+                        hsvPoint.Position = UDim2.new(s, -4, 1 - v, -4)
+                        updateColor()
+                    elseif hueDragging then
+                        local relativeY = math.clamp((input.Position.Y - hueSlider.AbsolutePosition.Y) / hueSlider.AbsoluteSize.Y, 0, 1)
+                        h = relativeY
+                        hueHandle.Position = UDim2.new(0, 0, h, -2)
+                        updateColor()
+                    end
+                end
+            end)
+
+            ColorPicker.Instance.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    ColorPicker.Open = not ColorPicker.Open
+                    pickerFrame.Visible = ColorPicker.Open
+                    AnimationManager.Create(pickerFrame, {Size = UDim2.new(1, 0, 0, ColorPicker.Open and 120 or 0)})
+                end
+            end)
+
+            function ColorPicker:Set(newSettings)
+                newSettings = Kwargify(colorPickerSettings, newSettings or {})
+                ColorPicker.Name = newSettings.Name
+                ColorPicker.Color = newSettings.Color
+                ColorPicker.Callback = newSettings.Callback
+                label.Text = newSettings.Name
+                preview.BackgroundColor3 = newSettings.Color
+                h, s, v = newSettings.Color:ToHSV()
+                hsvPoint.Position = UDim2.new(s, -4, 1 - v, -4)
+                hueHandle.Position = UDim2.new(0, 0, h, -2)
+                updateColor()
+            end
+
+            function ColorPicker:Destroy()
+                ColorPicker.Instance:Destroy()
+                StellarUI.Elements[ColorPicker.Instance] = nil
+            end
+
+            function ColorPicker:UpdateTheme(theme)
+                ColorPicker.Instance.BackgroundColor3 = theme.SecondaryBackground
+                pickerFrame.BackgroundColor3 = theme.SecondaryBackground
+                label.TextColor3 = theme.Text
+                hueSlider.BackgroundColor3 = theme.Border
+                hueHandle.BackgroundColor3 = theme.Text
+                stroke.Color = theme.Border
+            end
+
+            if flag then
+                StellarUI.Options[flag] = ColorPicker
+            end
+            StellarUI.Elements[ColorPicker.Instance] = ColorPicker
+            return ColorPicker
+        end
+
+        -- Element Creation: Section
+        function Tab:CreateSection(sectionSettings)
+            sectionSettings = Kwargify({
+                Name = "Section"
+            }, sectionSettings or {})
+
+            local Section = {
+                Name = sectionSettings.Name,
+                Instance = Instance.new("Frame", Tab.Page),
+            }
+
+            Section.Instance.Size = UDim2.new(1, -20, 0, 30)
+            Section.Instance.Position = UDim2.new(0, 10, 0, 0)
+            Section.Instance.BackgroundTransparency = 1
+
+            local title = Instance.new("TextLabel", Section.Instance)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.Text = sectionSettings.Name
+            title.TextColor3 = ThemeManager.Themes[ThemeManager.CurrentTheme].Text
+            title.TextSize = 16
+            title.Font = Enum.Font.SourceSansBold
+            title.TextXAlignment = Enum.TextXAlignment.Left
+            title.BackgroundTransparency = 1
+
+            function Section:UpdateTheme(theme)
+                title.TextColor3 = theme.Text
+            end
+
+            StellarUI.Elements[Section.Instance] = Section
+            return Section
+        end
+
+        table.insert(Window.Tabs, Tab)
+        if #Window.Tabs == 1 then
+            Tab.Page.Visible = true
+            Tab.Button.BackgroundTransparency = 0
+        end
+        return Tab
+    end
+
+    -- Config Section
+    function Window:CreateConfigSection()
+        if isStudio then
+            NotificationManager.Create({
+                Title = "Warning",
+                Content = "Config system unavailable in Studio",
+                Duration = 5
+            })
+            return
+        end
+
+        local configTab = Window:CreateTab({Name = "Config", Icon = "settings"})
+        configTab:CreateSection({Name = "Configuration"})
+
+        local inputPath = ""
+        configTab:CreateInput({
+            Name = "Config Name",
+            Description = "Enter a name for your config",
+            PlaceholderText = "Name",
+            CurrentValue = "",
+            Numeric = false,
+            Callback = function(value)
+                inputPath = value
+            end
+        })
+
+        local configSelection
+        configTab:CreateButton({
+            Name = "Create Config",
+            Description = "Save current settings to a new config",
+            Callback = function()
+                if inputPath == "" then
+                    NotificationManager.Create({
+                        Title = "Error",
+                        Content = "Config name cannot be empty",
+                        Duration = 5
+                    })
+                    return
+                end
+                local success, err = StellarUI:SaveConfig(inputPath)
+                if not success then
+                    NotificationManager.Create({
+                        Title = "Error",
+                        Content = "Failed to save config: " .. err,
+                        Duration = 5
+                    })
+                    return
+                end
+                NotificationManager.Create({
+                    Title = "Success",
+                    Content = "Created config: " .. inputPath,
+                    Duration = 5
+                })
+                configSelection:Set({Options = StellarUI:RefreshConfigList()})
+            end
+        })
+
+        configTab:CreateSection({Name = "Load/Save Config"})
+
+        configSelection = configTab:CreateDropdown({
+            Name = "Select Config",
+            Description = "Choose a config to load",
+            Options = StellarUI:RefreshConfigList(),
+            CurrentOption = {},
+            MultipleOptions = false,
+            Callback = function(value)
+                selectedConfig = value
+            end
+        })
+
+        configTab:CreateButton({
+            Name = "Load Config",
+            Description = "Load selected config",
+            Callback = function()
+                if not selectedConfig then
+                    NotificationManager.Create({
+                        Title = "Error",
+                        Content = "No config selected",
+                        Duration = 5
+                    })
+                    return
+                end
+                local success, err = StellarUI:LoadConfig(selectedConfig)
+                if not success then
+                    NotificationManager.Create({
+                        Title = "Error",
+                        Content = "Failed to load config: " .. err,
+                        Duration = 5
+                    })
+                    return
+                end
+                NotificationManager.Create({
+                    Title = "Success",
+                    Content = "Loaded config: " .. selectedConfig,
+                    Duration = 5
+                })
+            end
+        })
+
+        configTab:CreateButton({
+            Name = "Refresh Config List",
+            Description = "Update the config list",
+            Callback = function()
+                configSelection:Set({Options = StellarUI:RefreshConfigList()})
+            end
+        })
+    end
+
+    function Window:UpdateTheme(theme)
+        Main.BackgroundColor3 = theme.Background
+        gradient.Color = theme.Accent
+        Navigation.BackgroundColor3 = theme.SecondaryBackground
+        DragBar.BackgroundColor3 = theme.SecondaryBackground
+        Title.TextColor3 = theme.Text
+    end
+
+    StellarUI.Elements[Main] = Window
+    return Window
+end
+
+-- Config System
+StellarUI.Options = {}
+
+local ConfigParser = {
+    Toggle = {
+        Save = function(flag, data)
+            return {type = "Toggle", flag = flag, state = data.CurrentValue or false}
+        end,
+        Load = function(flag, data)
+            if StellarUI.Options[flag] then
+                StellarUI.Options[flag]:Set({CurrentValue = data.state})
+            end
+        end
+    },
+    Slider = {
+        Save = function(flag, data)
+            return {type = "Slider", flag = flag, value = data.CurrentValue}
+        end,
+        Load = function(flag, data)
+            if StellarUI.Options[flag] then
+                StellarUI.Options[flag]:Set({CurrentValue = data.value})
+            end
+        end
+    },
+    ColorPicker = {
+        Save = function(flag, data)
+            return {
+                type = "ColorPicker",
+                flag = flag,
+                color = {data.Color.R * 255, data.Color.G * 255, data.Color.B * 255}
+            }
+        end,
+        Load = function(flag, data)
+            if StellarUI.Options[flag] and data.color then
+                StellarUI.Options[flag]:Set({Color = Color3.fromRGB(unpack(data.color))})
+            end
+        end
+    }
+}
+
+function StellarUI:SaveConfig(path)
+    if isStudio then return false, "Config system unavailable in Studio" end
+    if not path or path == "" then return false, "Invalid path" end
+
+    local fullPath = "StellarUI/settings/" .. path .. ".stellar"
+    local data = {objects = {}}
+
+    for flag, option in pairs(StellarUI.Options) do
+        if ConfigParser[option.Class] then
+            table.insert(data.objects, ConfigParser[option.Class].Save(flag, option))
+        end
+    end
+
+    local success, encoded = pcall(HttpService.JSONEncode, HttpService, data)
+    if not success then
+        return false, "Failed to encode config"
+    end
+
+    if not isfolder("StellarUI") then makefolder("StellarUI") end
+    if not isfolder("StellarUI/settings") then makefolder("StellarUI/settings") end
+    writefile(fullPath, encoded)
+    return true
+end
+
+function StellarUI:LoadConfig(path)
+    if isStudio then return false, "Config system unavailable in Studio" end
+    if not path or path == "" then return false, "Invalid path" end
+
+    local fullPath = "StellarUI/settings/" .. path .. ".stellar"
+    if not isfile(fullPath) then return false, "Config file not found" end
+
+    local success, decoded = pcall(HttpService.JSONDecode, HttpService, readfile(fullPath))
+    if not success then return false, "Failed to decode config" end
+
+    for _, option in pairs(decoded.objects) do
+        if ConfigParser[option.type] then
+            task.spawn(function()
+                ConfigParser[option.type].Load(option.flag, option)
+            end)
+        end
+    end
+
+    return true
+end
+
+function StellarUI:RefreshConfigList()
+    if isStudio then return {} end
+    local list = listfiles("StellarUI/settings") or {}
+    local out = {}
+    for _, file in pairs(list) do
+        if file:sub(-8) == ".stellar" then
+            local name = file:match("settings/(.+)%.stellar$")
+            if name then
+                table.insert(out, name)
+            end
+        end
+    end
+    return out
+end
+
+-- Material Icons (Subset for Demo)
+StellarUI.MaterialIcons = {
+    home = "http://www.roblox.com/asset/?id=6026568195",
+    settings = "http://www.roblox.com/asset/?id=6031280882",
+    info = "http://www.roblox.com/asset/?id=6026568227",
+    warning = "http://www.roblox.com/asset/?id=6023426957"
+}
+
+-- Example Usage
+if isStudio then
+    local window = StellarUI:CreateWindow({
+        Name = "StellarUI Demo",
+        Subtitle = "Next-Gen UI Library",
+        Bind = Enum.KeyCode.F9
+    })
+
+    local mainTab = window:CreateTab({Name = "Main", Icon = "home"})
+    mainTab:CreateSection({Name = "Controls"})
+    mainTab:CreateButton({
+        Name = "Test Button",
+        Description = "Click to test notification",
+        Callback = function()
+            NotificationManager.Create({
+                Title = "Success",
+                Content = "Button clicked successfully!",
+                Duration = 3
+            })
+        end
+    })
+    mainTab:CreateToggle({
+        Name = "Enable Feature",
+        Description = "Toggle a feature on or off",
+        CurrentValue = false,
+        Callback = function(value)
+            NotificationManager.Create({
+                Title = "Toggle",
+                Content = "Feature " .. (value and "enabled" or "disabled"),
+                Duration = 3
+            })
+        end
+    }, "FeatureToggle")
+    mainTab:CreateSlider({
+        Name = "Speed",
+        Range = {0, 100},
+        Increment = 1,
+        CurrentValue = 50,
+        Callback = function(value)
+            NotificationManager.Create({
+                Title = "Slider",
+                Content = "Speed set to: " .. value,
+                Duration = 3
+            })
+        end
+    }, "SpeedSlider")
+    mainTab:CreateColorPicker({
+        Name = "Theme Color",
+        Color = Color3.fromRGB(100, 150, 200),
+        Callback = function(color)
+            ThemeManager.Themes[ThemeManager.CurrentTheme].Accent = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, color),
+                ColorSequenceKeypoint.new(1, color)
+            }
+            ThemeManager:ApplyTheme()
+        end
+    }, "ThemeColor")
+
+    window:CreateConfigSection()
+end
+
+return StellarUI
+```
