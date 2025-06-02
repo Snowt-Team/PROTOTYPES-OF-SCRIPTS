@@ -1,4 +1,4 @@
-```lua
+
 -- StellarUI: A Modern Roblox UI Library
 -- Version: 1.0.0
 -- Author: Inspired by Luna Interface Suite, enhanced by xAI
@@ -1108,4 +1108,3 @@ if isStudio then
 end
 
 return StellarUI
-```
